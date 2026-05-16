@@ -33,6 +33,9 @@ import { Evaluation } from './pages/educator/Evaluation';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { ManageStudents } from './pages/admin/ManageStudents';
 import { ManagePrograms } from './pages/admin/ManagePrograms';
+import { ManageEducators } from './pages/admin/ManageEducators';
+import { AdminNotifications } from './pages/admin/AdminNotifications';
+import { AdminSettings } from './pages/admin/AdminSettings';
 import { Reports } from './pages/admin/Reports';
 
 // Venues Public Pages
@@ -51,6 +54,8 @@ import { PaymentsManagement } from './pages/venues/backoffice/PaymentsManagement
 import { LegalReview } from './pages/venues/backoffice/LegalReview';
 import { MaintenanceModule } from './pages/venues/backoffice/MaintenanceModule';
 import { ReportsCenter } from './pages/venues/backoffice/ReportsCenter';
+import { VenuesManagement } from './pages/venues/backoffice/VenuesManagement';
+import { EventsManagement } from './pages/venues/backoffice/EventsManagement';
 import { BackofficeLayout } from './components/venues/BackofficeLayout';
 
 // Protected Route Component
@@ -194,7 +199,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'educadores',
-        element: <div className="p-8">Gestión de Educadores - En desarrollo</div>
+        element: <ManageEducators />
       },
       {
         path: 'programas',
@@ -206,11 +211,15 @@ export const router = createBrowserRouter([
       },
       {
         path: 'notificaciones',
-        element: <div className="p-8">Notificaciones - En desarrollo</div>
+        element: <AdminNotifications />
       },
       {
         path: 'configuracion',
-        element: <div className="p-8">Configuración - En desarrollo</div>
+        element: <AdminSettings />
+      },
+      {
+        path: 'perfil',
+        element: <Profile />
       }
     ]
   },
@@ -252,7 +261,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'escenarios',
-        element: <div className="p-8">Gestión de Escenarios - En desarrollo</div>
+        element: <VenuesManagement />
       },
       {
         path: 'solicitudes',
@@ -268,7 +277,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'eventos',
-        element: <div className="p-8">Control de Eventos - En desarrollo</div>
+        element: <EventsManagement />
       },
       {
         path: 'mantenimiento',

@@ -61,6 +61,7 @@ const dropdownStyle: React.CSSProperties = {
   borderRadius: 4,
   overflow: 'hidden',
   boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+  zIndex: 9999,
 };
 
 export const TopNav = () => {

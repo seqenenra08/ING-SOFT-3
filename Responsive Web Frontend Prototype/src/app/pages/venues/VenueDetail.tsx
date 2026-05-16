@@ -24,7 +24,7 @@ export function VenueDetail() {
           </Link>
           <p style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: C.active, marginBottom: 6 }}>{venue.type}</p>
           <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '1.8rem', fontWeight: 700, color: '#fff' }}>{venue.name}</h1>
-          <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>{venue.location}</p>
+          <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>{venue.address} · {venue.neighborhood}</p>
         </div>
       </div>
 

@@ -77,7 +77,7 @@ export function VenuesCatalog() {
                   <p style={{ fontSize: '0.75rem', color: C.muted, margin: '5px 0', lineHeight: 1.5 }}>{v.description?.slice(0, 100)}...</p>
                   <div style={{ display: 'flex', gap: 16 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', color: C.subtle }}><Users style={{ width: 11, height: 11 }} /> {v.capacity} personas</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', color: C.subtle }}><MapPin style={{ width: 11, height: 11 }} /> {v.location}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', color: C.subtle }}><MapPin style={{ width: 11, height: 11 }} /> {v.address}</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, flexShrink: 0 }}>

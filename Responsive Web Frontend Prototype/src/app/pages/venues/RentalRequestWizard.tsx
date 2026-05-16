@@ -9,9 +9,9 @@ import { C } from '../../theme';
 const steps = ['Información del evento', 'Datos del solicitante', 'Confirmar solicitud'];
 
 export function RentalRequestWizard() {
-  const { venueId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const venue: any = (venues as any[]).find(v => v.id === venueId) ?? venues[0];
+  const venue: any = (venues as any[]).find(v => v.id === id) ?? venues[0];
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
     eventName: '', eventType: '', attendees: '', startDate: '', endDate: '', description: '',

@@ -1,16 +1,25 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Save, CheckCircle, Users } from 'lucide-react';
+import { Save, CheckCircle, Users, ChevronDown } from 'lucide-react';
 import { C } from '../../theme';
 
-const students = [
-  { id: '1', name: 'Camila Rodríguez' },
-  { id: '2', name: 'Valentina Torres' },
-  { id: '3', name: 'Alejandro Herrera' },
-  { id: '4', name: 'Isabella Gómez' },
-];
+const groupsData: Record<string, any> = {
+  '1': { name: 'Ballet Clásico - Grupo A', program: 'Ballet Clásico', period: 'Técnica Básica', students: [
+    { id: '1', name: 'Camila Rodríguez' },
+    { id: '2', name: 'Valentina Torres' },
+    { id: '3', name: 'Alejandro Herrera' },
+    { id: '4', name: 'Isabella Gómez' },
+  ]},
+  '2': { name: 'Danza Folklórica - Grupo A', program: 'Danza Folklórica', period: 'Nivel Intermedio', students: [
+    { id: '5', name: 'Juan David Pérez' },
+    { id: '6', name: 'Daniela Castro' },
+  ]},
+};
 
 export const Evaluation = () => {
+  const [groupId, setGroupId] = useState('1');
+  const group = groupsData[groupId];
+  const students: { id: string; name: string }[] = group?.students ?? [];
   const [grades, setGrades] = useState<Record<string, string>>({});
   const [comments, setComments] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
@@ -26,15 +35,27 @@ export const Evaluation = () => {
           <div>
             <p style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: C.active, marginBottom: 6 }}>Educador</p>
             <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '1.6rem', fontWeight: 700, color: '#fff' }}>Evaluaciones</h1>
-            <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>Ballet Clásico – Grupo A · Técnica Básica</p>
+            <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>{group?.name} · {group?.period}</p>
           </div>
-          <button onClick={handleSave} style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '9px 20px', background: saved ? '#4b7a30' : C.primary,
-            color: '#fff', fontWeight: 600, fontSize: '0.8rem', border: 'none', cursor: 'pointer', borderRadius: 2, transition: 'background 0.2s',
-          }}>
-            {saved ? <><CheckCircle style={{ width: 14, height: 14 }} /> Guardado</> : <><Save style={{ width: 14, height: 14 }} /> Guardar Evaluaciones</>}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Group selector */}
+            <div style={{ position: 'relative' }}>
+              <select value={groupId} onChange={e => { setGroupId(e.target.value); setGrades({}); setComments({}); }}
+                style={{ appearance: 'none', padding: '8px 36px 8px 12px', background: C.surface, border: `1px solid ${C.border}`, color: C.text, fontSize: '0.8rem', outline: 'none', borderRadius: 2, cursor: 'pointer' }}>
+                {Object.entries(groupsData).map(([id, g]) => (
+                  <option key={id} value={id}>{g.name}</option>
+                ))}
+              </select>
+              <ChevronDown style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: C.subtle, pointerEvents: 'none' }} />
+            </div>
+            <button onClick={handleSave} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '9px 20px', background: saved ? '#4b7a30' : C.primary,
+              color: '#fff', fontWeight: 600, fontSize: '0.8rem', border: 'none', cursor: 'pointer', borderRadius: 2, transition: 'background 0.2s',
+            }}>
+              {saved ? <><CheckCircle style={{ width: 14, height: 14 }} /> Guardado</> : <><Save style={{ width: 14, height: 14 }} /> Guardar Evaluaciones</>}
+            </button>
+          </div>
         </motion.div>
       </div>
 

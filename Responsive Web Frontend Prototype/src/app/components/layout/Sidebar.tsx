@@ -17,11 +17,12 @@ const studentLinks = [
 ];
 
 const educatorLinks = [
-  { to: '/educador/dashboard', icon: LayoutDashboard, label: 'Inicio',        color: '#a78bfa' },
-  { to: '/educador/grupos',    icon: Users,            label: 'Mis Grupos',   color: '#34d399' },
-  { to: '/educador/horario',   icon: Calendar,         label: 'Horario',      color: '#fbbf24' },
-  { to: '/educador/alertas',   icon: AlertCircle,      label: 'Alertas',      color: '#f87171' },
-  { to: '/educador/perfil',    icon: User,             label: 'Mi Perfil',    color: '#60a5fa' },
+  { to: '/educador/dashboard',  icon: LayoutDashboard, label: 'Inicio',       color: '#a78bfa' },
+  { to: '/educador/grupos',     icon: Users,           label: 'Mis Grupos',   color: '#34d399' },
+  { to: '/educador/horario',    icon: Calendar,        label: 'Horario',      color: '#fbbf24' },
+  { to: '/educador/evaluacion', icon: FileText,        label: 'Evaluación',   color: '#f472b6' },
+  { to: '/educador/alertas',    icon: AlertCircle,     label: 'Alertas',      color: '#f87171' },
+  { to: '/educador/perfil',     icon: User,            label: 'Mi Perfil',    color: '#60a5fa' },
 ];
 
 const adminLinks = [
