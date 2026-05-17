@@ -1,12 +1,85 @@
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
 import { motion } from 'motion/react';
-import { Calendar, Users, Clock, MapPin, ArrowLeft, BookOpen } from 'lucide-react';
+import { Calendar, Users, Clock, MapPin, ArrowLeft, BookOpen, CheckCircle2, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { C } from '../../theme';
-import { programsData as programs } from '../../data/mockData';
+import { programsService, Program } from '../../services/programsService';
+import { useAuth } from '../../context/AuthContext';
 
 export const ProgramDetail = () => {
-  const { id } = useParams();
-  const program: any = programs.find((p: any) => p.id === id) ?? programs[0];
+  const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const [program, setProgram] = useState<Program | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [enrolled, setEnrolled] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [studentId, setStudentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    programsService.getById(id).then(setProgram).catch(() => toast.error('No se pudo cargar el programa'));
+    setLoading(false);
+  }, [id]);
+
+  useEffect(() => {
+    if (!user) return;
+    programsService.getStudentId(user.id).then(sid => {
+      setStudentId(sid);
+      if (sid && id) {
+        programsService.isEnrolled(id, sid).then(setEnrolled);
+      }
+    });
+  }, [user, id]);
+
+  const handleEnroll = async () => {
+    if (!program || !studentId) {
+      toast.error('No se pudo identificar tu perfil de estudiante');
+      return;
+    }
+    if ((program.enrolled ?? 0) >= (program.capacity ?? 0)) {
+      toast.error('Este programa no tiene cupos disponibles');
+      return;
+    }
+    setEnrolling(true);
+    try {
+      await programsService.enroll(program.id, studentId);
+      setEnrolled(true);
+      setProgram(prev => prev ? { ...prev, enrolled: (prev.enrolled ?? 0) + 1 } : prev);
+      toast.success(`Te inscribiste en ${program.name}`);
+    } catch (err: any) {
+      toast.error(err.message ?? 'Error al inscribirse');
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  const handleUnenroll = async () => {
+    if (!program || !studentId) return;
+    if (!window.confirm('¿Seguro que quieres cancelar tu inscripción?')) return;
+    setEnrolling(true);
+    try {
+      await programsService.unenroll(program.id, studentId);
+      setEnrolled(false);
+      setProgram(prev => prev ? { ...prev, enrolled: Math.max(0, (prev.enrolled ?? 0) - 1) } : prev);
+      toast.success('Inscripción cancelada');
+    } catch (err: any) {
+      toast.error(err.message ?? 'Error al cancelar');
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  if (loading || !program) {
+    return (
+      <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 style={{ width: 28, height: 28, color: C.primary, animation: 'spin 1s linear infinite' }} />
+      </div>
+    );
+  }
+
+  const cuposLibres = (program.capacity ?? 0) - (program.enrolled ?? 0);
+  const lleno = cuposLibres <= 0;
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'Inter', sans-serif" }}>
@@ -69,11 +142,11 @@ export const ProgramDetail = () => {
               <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.8rem', color: C.text, textTransform: 'uppercase' }}>Información</span>
             </div>
             {[
-              { icon: Users,    label: 'Educador',  value: program.educator ?? 'Por asignar'       },
-              { icon: BookOpen, label: 'Nivel',     value: program.level ?? 'Todos los niveles'    },
-              { icon: Clock,    label: 'Duración',  value: program.duration ?? 'Por confirmar'     },
-              { icon: MapPin,   label: 'Ubicación', value: 'Sede Principal'                         },
-              { icon: Calendar, label: 'Horario',   value: program.schedule ?? 'Por confirmar'     },
+              { icon: Users,    label: 'Educador',  value: program.educator || 'Por asignar'    },
+              { icon: BookOpen, label: 'Nivel',     value: program.level || 'Todos los niveles' },
+              { icon: Clock,    label: 'Duración',  value: program.duration ? `${program.duration} meses` : 'Por confirmar' },
+              { icon: MapPin,   label: 'Ubicación', value: 'Sede Principal'                      },
+              { icon: Calendar, label: 'Horario',   value: program.schedule || 'Por confirmar'  },
             ].map((item, i, arr) => {
               const Icon = item.icon;
               return (
@@ -89,10 +162,34 @@ export const ProgramDetail = () => {
                 </div>
               );
             })}
+            <div style={{ padding: '12px 18px', borderTop: `1px solid ${C.border}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                <span style={{ color: C.muted }}>Cupos disponibles</span>
+                <span style={{ fontWeight: 700, color: lleno ? C.active : C.primary }}>{lleno ? 'Sin cupos' : `${cuposLibres} de ${program.capacity}`}</span>
+              </div>
+            </div>
           </motion.div>
-          <button style={{ width: '100%', padding: '11px 0', background: C.primary, color: '#fff', fontWeight: 600, fontSize: '0.85rem', border: 'none', cursor: 'pointer', borderRadius: 2 }}>
-            Inscribirse al Programa
-          </button>
+
+          {enrolled ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ padding: '11px 16px', background: C.tint, border: `1px solid ${C.active}44`, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircle2 style={{ width: 16, height: 16, color: C.active }} />
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: C.active }}>Ya estás inscrito</span>
+              </div>
+              <button onClick={handleUnenroll} disabled={enrolling} style={{ width: '100%', padding: '9px 0', background: 'transparent', color: C.muted, fontSize: '0.78rem', border: `1px solid ${C.border}`, cursor: enrolling ? 'default' : 'pointer', borderRadius: 2 }}>
+                {enrolling ? 'Procesando...' : 'Cancelar inscripción'}
+              </button>
+            </div>
+          ) : (
+            <button onClick={handleEnroll} disabled={enrolling || lleno} style={{
+              width: '100%', padding: '11px 0', background: lleno ? C.muted : C.primary,
+              color: '#fff', fontWeight: 600, fontSize: '0.85rem', border: 'none',
+              cursor: enrolling || lleno ? 'default' : 'pointer', borderRadius: 2,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}>
+              {enrolling ? <><Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} /> Inscribiendo...</> : lleno ? 'Sin cupos disponibles' : 'Inscribirse al Programa'}
+            </button>
+          )}
         </div>
       </div>
     </div>

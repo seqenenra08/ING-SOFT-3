@@ -1,17 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { Search, MapPin, Users, ArrowRight } from 'lucide-react';
-import { venues } from '../../data/venuesData';
+import { venuesService } from '../../services/venuesService';
 import { C } from '../../theme';
 
-const types = ['Todos', 'Teatro', 'Auditorio', 'Sala', 'Salón', 'Espacio abierto'];
+const types = ['Todos', 'auditorio', 'teatro', 'sala', 'salon_cultural'];
 
 export function VenuesCatalog() {
+  const [venues, setVenues] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [type, setType] = useState('Todos');
 
-  const filtered = (venues as any[]).filter((v: any) =>
+  useEffect(() => {
+    venuesService.getVenues().then(setVenues).finally(() => setLoading(false));
+  }, []);
+
+  const filtered = venues.filter((v: any) =>
     (type === 'Todos' || v.type === type) &&
     (v.name?.toLowerCase().includes(search.toLowerCase()) || v.description?.toLowerCase().includes(search.toLowerCase()))
   );
@@ -49,54 +55,60 @@ export function VenuesCatalog() {
           </div>
         </div>
 
-        <p style={{ fontSize: '0.72rem', color: C.subtle, marginBottom: 16 }}>{filtered.length} escenario(s) disponible(s)</p>
+        {loading ? (
+          <p style={{ fontSize: '0.82rem', color: C.subtle, padding: '32px 0' }}>Cargando escenarios...</p>
+        ) : (
+          <>
+            <p style={{ fontSize: '0.72rem', color: C.subtle, marginBottom: 16 }}>{filtered.length} escenario(s) disponible(s)</p>
 
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }}
-          style={{ background: C.surface, border: `1px solid ${C.border}` }}>
-          {filtered.map((v: any, i: number, arr: any[]) => (
-            <div key={v.id}>
-              <div style={{ display: 'flex', gap: 20, padding: '18px 20px', cursor: 'pointer', transition: 'background 0.15s' }}
-                onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = C.tint}
-                onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'transparent'}>
-                <div style={{ width: 100, height: 72, flexShrink: 0, overflow: 'hidden', borderRadius: 2 }}>
-                  {v.images?.[0]
-                    ? <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <div style={{ width: '100%', height: '100%', background: C.tint, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <MapPin style={{ width: 20, height: 20, color: C.primary }} />
-                      </div>
-                  }
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                    <div>
-                      <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, color: C.text, fontSize: '0.9rem' }}>{v.name}</p>
-                      <p style={{ fontSize: '0.7rem', color: C.active, fontWeight: 600, marginTop: 2 }}>{v.type}</p>
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }}
+              style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+              {filtered.map((v: any, i: number, arr: any[]) => (
+                <div key={v.id}>
+                  <div style={{ display: 'flex', gap: 20, padding: '18px 20px', cursor: 'pointer', transition: 'background 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = C.tint}
+                    onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'transparent'}>
+                    <div style={{ width: 100, height: 72, flexShrink: 0, overflow: 'hidden', borderRadius: 2 }}>
+                      {v.images?.[0]
+                        ? <img src={v.images[0]} alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <div style={{ width: '100%', height: '100%', background: C.tint, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <MapPin style={{ width: 20, height: 20, color: C.primary }} />
+                          </div>
+                      }
                     </div>
-                    <span style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#4b7a30', border: `1px solid #4b7a3044`, padding: '2px 8px', borderRadius: 2 }}>Disponible</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                        <div>
+                          <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, color: C.text, fontSize: '0.9rem' }}>{v.name}</p>
+                          <p style={{ fontSize: '0.7rem', color: C.active, fontWeight: 600, marginTop: 2 }}>{v.type}</p>
+                        </div>
+                        <span style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#4b7a30', border: `1px solid #4b7a3044`, padding: '2px 8px', borderRadius: 2 }}>Disponible</span>
+                      </div>
+                      <p style={{ fontSize: '0.75rem', color: C.muted, margin: '5px 0', lineHeight: 1.5 }}>{v.description?.slice(0, 100)}...</p>
+                      <div style={{ display: 'flex', gap: 16 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', color: C.subtle }}><Users style={{ width: 11, height: 11 }} /> {v.capacity} personas</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', color: C.subtle }}><MapPin style={{ width: 11, height: 11 }} /> {v.address}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, flexShrink: 0 }}>
+                      {v.hourlyRate && (
+                        <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.85rem', color: C.text, textAlign: 'right' }}>
+                          ${v.hourlyRate?.toLocaleString()}<span style={{ fontSize: '0.65rem', fontWeight: 400, color: C.subtle }}>/hora</span>
+                        </p>
+                      )}
+                      <Link to={`/escenarios/detalle/${v.id}`}>
+                        <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', background: C.primary, color: '#fff', fontSize: '0.75rem', fontWeight: 600, border: 'none', cursor: 'pointer', borderRadius: 2 }}>
+                          Ver detalles <ArrowRight style={{ width: 12, height: 12 }} />
+                        </button>
+                      </Link>
+                    </div>
                   </div>
-                  <p style={{ fontSize: '0.75rem', color: C.muted, margin: '5px 0', lineHeight: 1.5 }}>{v.description?.slice(0, 100)}...</p>
-                  <div style={{ display: 'flex', gap: 16 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', color: C.subtle }}><Users style={{ width: 11, height: 11 }} /> {v.capacity} personas</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', color: C.subtle }}><MapPin style={{ width: 11, height: 11 }} /> {v.address}</span>
-                  </div>
+                  {i < arr.length - 1 && <div style={{ height: 1, background: C.border }} />}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, flexShrink: 0 }}>
-                  {v.pricePerDay && (
-                    <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.85rem', color: C.text, textAlign: 'right' }}>
-                      ${v.pricePerDay?.toLocaleString()}<span style={{ fontSize: '0.65rem', fontWeight: 400, color: C.subtle }}>/día</span>
-                    </p>
-                  )}
-                  <Link to={`/escenarios/escenario/${v.id}`}>
-                    <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', background: C.primary, color: '#fff', fontSize: '0.75rem', fontWeight: 600, border: 'none', cursor: 'pointer', borderRadius: 2 }}>
-                      Ver detalles <ArrowRight style={{ width: 12, height: 12 }} />
-                    </button>
-                  </Link>
-                </div>
-              </div>
-              {i < arr.length - 1 && <div style={{ height: 1, background: C.border }} />}
-            </div>
-          ))}
-        </motion.div>
+              ))}
+            </motion.div>
+          </>
+        )}
       </div>
     </div>
   );

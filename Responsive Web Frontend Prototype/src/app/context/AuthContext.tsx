@@ -15,9 +15,9 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<UserRole>;
   logout: () => void;
-  register: (data: any) => Promise<void>;
+  register: (data: any) => Promise<UserRole>;
   isAuthenticated: boolean;
 }
 
@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<UserRole> => {
     const result = await authService.login({ email, password });
     const u: User = {
       id:     result.user.id,
@@ -75,9 +75,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     saveToken(result.token);
     setTokenState(result.token);
     setUser(u);
+    return u.role;
   };
 
-  const register = async (data: any) => {
+  const register = async (data: any): Promise<UserRole> => {
     const result = await authService.register({
       name:  `${data.nombre ?? ''} ${data.apellido ?? ''}`.trim() || data.name || data.email,
       email: data.email,
@@ -94,6 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     saveToken(result.token);
     setTokenState(result.token);
     setUser(u);
+    return u.role;
   };
 
   const logout = () => {

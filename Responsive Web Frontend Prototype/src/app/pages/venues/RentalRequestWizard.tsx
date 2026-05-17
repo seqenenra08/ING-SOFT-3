@@ -1,48 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
-import { venues } from '../../data/venuesData';
+import { venuesService } from '../../services/venuesService';
 import { toast } from 'sonner';
 import { C } from '../../theme';
 
 const steps = ['Información del evento', 'Datos del solicitante', 'Confirmar solicitud'];
 
-export function RentalRequestWizard() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const venue: any = (venues as any[]).find(v => v.id === id) ?? venues[0];
-  const [step, setStep] = useState(0);
-  const [form, setForm] = useState({
-    eventName: '', eventType: '', attendees: '', startDate: '', endDate: '', description: '',
-    clientName: '', clientEmail: '', clientPhone: '', clientId: '', organization: '',
-  });
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '9px 12px', fontSize: '0.82rem',
+  background: C.surfaceAlt, border: `1px solid ${C.border}`,
+  color: C.text, outline: 'none', borderRadius: 2, boxSizing: 'border-box',
+};
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+const labelStyle: React.CSSProperties = {
+  display: 'block', fontSize: '0.68rem', fontWeight: 600,
+  color: C.text, marginBottom: 5, letterSpacing: '0.04em', textTransform: 'uppercase',
+};
 
-  const handleSubmit = () => {
-    toast.success('Solicitud enviada exitosamente. Número: SGE-2026-005');
-    setTimeout(() => navigate('/escenarios/seguimiento'), 1500);
-  };
+interface FieldProps {
+  id: string; label: string; type?: string; placeholder?: string;
+  value: string;
+  onChange: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>;
+}
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '9px 12px', fontSize: '0.82rem',
-    background: C.surfaceAlt, border: `1px solid ${C.border}`,
-    color: C.text, outline: 'none', borderRadius: 2, boxSizing: 'border-box',
-  };
-
-  const Field = ({ id, label, type = 'text', placeholder = '' }: { id: string; label: string; type?: string; placeholder?: string }) => (
+function Field({ id, label, type = 'text', placeholder = '', value, onChange }: FieldProps) {
+  return (
     <div>
-      <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: C.text, marginBottom: 5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</label>
+      <label style={labelStyle}>{label}</label>
       {type === 'textarea'
-        ? <textarea name={id} value={(form as any)[id]} onChange={handleChange} placeholder={placeholder}
-            rows={3}
+        ? <textarea name={id} value={value} onChange={onChange} placeholder={placeholder} rows={3}
             style={{ ...inputStyle, resize: 'vertical' }}
             onFocus={e => e.target.style.borderColor = C.primary}
             onBlur={e => e.target.style.borderColor = C.border}
           />
-        : <input name={id} type={type} value={(form as any)[id]} onChange={handleChange} placeholder={placeholder}
+        : <input name={id} type={type} value={value} onChange={onChange} placeholder={placeholder}
             style={inputStyle}
             onFocus={e => e.target.style.borderColor = C.primary}
             onBlur={e => e.target.style.borderColor = C.border}
@@ -50,6 +43,60 @@ export function RentalRequestWizard() {
       }
     </div>
   );
+}
+
+export function RentalRequestWizard() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [venues, setVenues] = useState<any[]>([]);
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState({
+    eventName: '', eventType: '', attendees: '', startDate: '', endDate: '',
+    startTime: '', endTime: '', description: '',
+    clientName: '', clientEmail: '', clientPhone: '', clientId: '', organization: '',
+  });
+
+  useEffect(() => {
+    venuesService.getVenues().then(setVenues);
+  }, []);
+
+  const venue: any = venues.find(v => v.id === id) ?? venues[0] ?? { name: '', location: '' };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async () => {
+    const payload = {
+      venueId:        venue.id,
+      venueName:      venue.name,
+      clientName:     form.clientName,
+      clientEmail:    form.clientEmail,
+      clientPhone:    form.clientPhone,
+      clientDocument: form.clientId,
+      clientOrg:      form.organization,
+      eventType:      form.eventType,
+      eventName:      form.eventName,
+      startDate:      form.startDate,
+      endDate:        form.endDate || form.startDate,
+      startTime:      form.startTime || '08:00',
+      endTime:        form.endTime   || '18:00',
+      attendees:      parseInt(form.attendees) || 0,
+      notes:          form.description,
+    } as any;
+    try {
+      const result = await venuesService.createRequest(payload);
+      toast.success(`Solicitud enviada. Número: ${result.requestNumber}`);
+      setTimeout(() => navigate('/escenarios/seguimiento'), 1500);
+    } catch (err: any) {
+      toast.error(`Error: ${err?.message ?? 'Error al enviar la solicitud.'}`);
+    }
+  };
+
+  const f = (fieldId: keyof typeof form) => ({
+    id: fieldId,
+    value: form[fieldId],
+    onChange: handleChange as React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>,
+  });
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'Inter', sans-serif" }}>
@@ -57,16 +104,16 @@ export function RentalRequestWizard() {
         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: C.primary }} />
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <p style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: C.active, marginBottom: 6 }}>Solicitud de Alquiler</p>
-          <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '1.5rem', fontWeight: 700, color: '#fff' }}>{venue.name}</h1>
-          <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>{venue.location}</p>
+          <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '1.5rem', fontWeight: 700, color: '#fff' }}>{venue.name || 'Escenario'}</h1>
+          <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>{venue.address ?? ''}</p>
         </div>
       </div>
 
-      {/* Progress */}
+      {/* Step progress */}
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}` }}>
         <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 40px', display: 'flex' }}>
           {steps.map((s, i) => (
-            <div key={s} style={{ flex: 1, padding: '14px 0', textAlign: 'center', borderBottom: i === step ? `2px solid ${C.primary}` : '2px solid transparent', cursor: 'default' }}>
+            <div key={s} style={{ flex: 1, padding: '14px 0', textAlign: 'center', borderBottom: i === step ? `2px solid ${C.primary}` : '2px solid transparent' }}>
               <span style={{ fontSize: '0.72rem', fontWeight: i <= step ? 700 : 400, color: i <= step ? C.primary : C.subtle }}>
                 {i + 1}. {s}
               </span>
@@ -84,53 +131,86 @@ export function RentalRequestWizard() {
               {steps[step]}
             </span>
           </div>
-          <div style={{ padding: '24px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             {step === 0 && (
               <>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-                  <div style={{ flex: '1 1 220px' }}><Field id="eventName" label="Nombre del evento" placeholder="Festival de Danza 2026" /></div>
                   <div style={{ flex: '1 1 220px' }}>
-                    <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: C.text, marginBottom: 5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Tipo de evento</label>
+                    <Field {...f('eventName')} label="Nombre del evento" placeholder="Festival de Danza 2026" />
+                  </div>
+                  <div style={{ flex: '1 1 220px' }}>
+                    <label style={labelStyle}>Tipo de evento</label>
                     <select name="eventType" value={form.eventType} onChange={handleChange}
-                      style={{ ...inputStyle }}
+                      style={inputStyle}
                       onFocus={e => e.target.style.borderColor = C.primary}
                       onBlur={e => e.target.style.borderColor = C.border}>
                       <option value="">Seleccionar...</option>
-                      <option>Cultural</option><option>Académico</option><option>Artístico</option><option>Social</option>
+                      <option>Cultural</option>
+                      <option>Académico</option>
+                      <option>Artístico</option>
+                      <option>Social</option>
                     </select>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-                  <div style={{ flex: '1 1 180px' }}><Field id="startDate" label="Fecha inicio" type="date" /></div>
-                  <div style={{ flex: '1 1 180px' }}><Field id="endDate" label="Fecha fin" type="date" /></div>
-                  <div style={{ flex: '1 1 120px' }}><Field id="attendees" label="Asistentes" type="number" placeholder="100" /></div>
+                  <div style={{ flex: '1 1 160px' }}>
+                    <Field {...f('startDate')} label="Fecha inicio" type="date" />
+                  </div>
+                  <div style={{ flex: '1 1 120px' }}>
+                    <Field {...f('startTime')} label="Hora inicio" type="time" />
+                  </div>
+                  <div style={{ flex: '1 1 160px' }}>
+                    <Field {...f('endDate')} label="Fecha fin" type="date" />
+                  </div>
+                  <div style={{ flex: '1 1 120px' }}>
+                    <Field {...f('endTime')} label="Hora fin" type="time" />
+                  </div>
+                  <div style={{ flex: '1 1 120px' }}>
+                    <Field {...f('attendees')} label="Asistentes" type="number" placeholder="100" />
+                  </div>
                 </div>
-                <Field id="description" label="Descripción del evento" type="textarea" placeholder="Describe brevemente el evento..." />
+                <Field {...f('description')} label="Descripción del evento" type="textarea" placeholder="Describe brevemente el evento..." />
               </>
             )}
+
             {step === 1 && (
               <>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-                  <div style={{ flex: '1 1 220px' }}><Field id="clientName" label="Nombre completo" /></div>
-                  <div style={{ flex: '1 1 220px' }}><Field id="clientId" label="Documento de identidad" /></div>
+                  <div style={{ flex: '1 1 220px' }}>
+                    <Field {...f('clientName')} label="Nombre completo" placeholder="Tu nombre completo" />
+                  </div>
+                  <div style={{ flex: '1 1 220px' }}>
+                    <Field {...f('clientId')} label="Documento de identidad" placeholder="1234567890" />
+                  </div>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-                  <div style={{ flex: '1 1 220px' }}><Field id="clientEmail" label="Correo electrónico" type="email" placeholder="tu@email.com" /></div>
-                  <div style={{ flex: '1 1 220px' }}><Field id="clientPhone" label="Teléfono" placeholder="315 123 4567" /></div>
+                  <div style={{ flex: '1 1 220px' }}>
+                    <Field {...f('clientEmail')} label="Correo electrónico" type="email" placeholder="tu@email.com" />
+                  </div>
+                  <div style={{ flex: '1 1 220px' }}>
+                    <Field {...f('clientPhone')} label="Teléfono" placeholder="315 123 4567" />
+                  </div>
                 </div>
-                <Field id="organization" label="Organización o entidad" placeholder="Nombre de la organización (opcional)" />
+                <Field {...f('organization')} label="Organización o entidad" placeholder="Nombre de la organización (opcional)" />
               </>
             )}
+
             {step === 2 && (
               <div>
                 <p style={{ fontSize: '0.78rem', fontWeight: 600, color: C.text, marginBottom: 14 }}>Resumen de la solicitud</p>
                 {[
-                  { label: 'Escenario',   value: venue.name       },
+                  { label: 'Escenario',   value: venue.name },
                   { label: 'Evento',      value: form.eventName || '—' },
                   { label: 'Tipo',        value: form.eventType || '—' },
-                  { label: 'Fechas',      value: form.startDate ? `${form.startDate} → ${form.endDate}` : '—' },
+                  { label: 'Fecha inicio',value: form.startDate || '—' },
+                  { label: 'Hora inicio', value: form.startTime || '08:00' },
+                  { label: 'Fecha fin',   value: form.endDate || form.startDate || '—' },
+                  { label: 'Hora fin',    value: form.endTime || '18:00' },
+                  { label: 'Asistentes',  value: form.attendees || '—' },
                   { label: 'Solicitante', value: form.clientName || '—' },
                   { label: 'Correo',      value: form.clientEmail || '—' },
+                  { label: 'Teléfono',    value: form.clientPhone || '—' },
                 ].map((item, i, arr) => (
                   <div key={item.label}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0' }}>
@@ -143,6 +223,7 @@ export function RentalRequestWizard() {
               </div>
             )}
           </div>
+
           <div style={{ padding: '16px 24px', borderTop: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between' }}>
             {step > 0
               ? <button onClick={() => setStep(step - 1)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, fontSize: '0.8rem', cursor: 'pointer', borderRadius: 2 }}>

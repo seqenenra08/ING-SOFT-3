@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, X, Plus, Calendar, Users, Clock, BarChart3, Save, Pencil } from 'lucide-react';
+import { Search, BookOpen, X, Plus, Calendar, Users, Clock, BarChart3, Save, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { C } from '../../theme';
 import { programsService, type Program } from '../../services/programsService';
+import { educatorsService, type Educator } from '../../services/educatorsService';
 
 const CATEGORIES = ['Danza', 'Música', 'Teatro', 'Artes Visuales', 'Otro'];
 const LEVELS = ['Principiante', 'Intermedio', 'Avanzado', 'Todos los niveles', 'Niños'];
@@ -15,6 +16,7 @@ const categoryColor: Record<string, string> = {
 
 export const ManagePrograms = () => {
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [educators, setEducators] = useState<Educator[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Program | null>(null);
@@ -23,9 +25,13 @@ export const ManagePrograms = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    programsService.getAll()
-      .then(setPrograms)
-      .catch(() => toast.error('Error al cargar programas'))
+    Promise.all([
+      programsService.getAll(),
+      educatorsService.getAll(),
+    ]).then(([progs, edus]) => {
+      setPrograms(progs);
+      setEducators(edus);
+    }).catch(() => toast.error('Error al cargar programas'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -36,7 +42,28 @@ export const ManagePrograms = () => {
   );
 
   const openCreate = () => { setForm(EMPTY_FORM); setModal('create'); };
-  const openEdit = (p: Program, e: React.MouseEvent) => { e.stopPropagation(); setForm({ ...p }); setModal('edit'); };
+  const openEdit = (p: Program, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Pre-populate educatorId by matching educator name to the loaded list
+    const matchedEdu = educators.find(ed =>
+      `${ed.nombre ?? ''} ${ed.apellido ?? ''}`.trim() === p.educator
+    );
+    setForm({ ...p, educatorId: matchedEdu?.id ?? p.educatorId });
+    setModal('edit');
+  };
+
+  const handleDelete = async (p: Program, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`¿Eliminar el programa "${p.name}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await programsService.remove(p.id);
+      setPrograms(prev => prev.filter(x => x.id !== p.id));
+      if (selected?.id === p.id) setSelected(null);
+      toast.success('Programa eliminado');
+    } catch {
+      toast.error('Error al eliminar el programa');
+    }
+  };
 
   const handleSave = async () => {
     if (!form.name || !form.category) { toast.error('Nombre y categoría son obligatorios'); return; }
@@ -212,10 +239,16 @@ export const ManagePrograms = () => {
                     </div>
                   ))}
 
-                  <button onClick={e => openEdit(selected, e)}
-                    style={{ marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px', background: C.primary, color: '#fff', fontWeight: 600, fontSize: '0.8rem', border: 'none', cursor: 'pointer', borderRadius: 2 }}>
-                    <Pencil style={{ width: 13, height: 13 }} /> Editar Programa
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                    <button onClick={e => openEdit(selected, e)}
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px', background: C.primary, color: '#fff', fontWeight: 600, fontSize: '0.8rem', border: 'none', cursor: 'pointer', borderRadius: 2 }}>
+                      <Pencil style={{ width: 13, height: 13 }} /> Editar
+                    </button>
+                    <button onClick={e => handleDelete(selected, e)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', background: 'transparent', color: C.active, fontWeight: 600, fontSize: '0.8rem', border: `1px solid ${C.active}55`, cursor: 'pointer', borderRadius: 2 }}>
+                      <Trash2 style={{ width: 13, height: 13 }} />
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -290,10 +323,25 @@ export const ManagePrograms = () => {
                 <div style={{ display: 'flex', gap: 12 }}>
                   <div style={{ flex: 2 }}>
                     <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>Educador</label>
-                    <input value={form.educator ?? ''} onChange={e => setForm(p => ({ ...p, educator: e.target.value }))} placeholder="Nombre del educador"
-                      style={{ width: '100%', padding: '9px 12px', background: C.surfaceAlt, border: `1px solid ${C.border}`, color: C.text, fontSize: '0.82rem', outline: 'none', borderRadius: 2, boxSizing: 'border-box' }}
-                      onFocus={e => e.target.style.borderColor = C.primary} onBlur={e => e.target.style.borderColor = C.border}
-                    />
+                    <select
+                      value={form.educatorId ?? ''}
+                      onChange={e => {
+                        const edu = educators.find(ed => ed.id === e.target.value);
+                        setForm(p => ({
+                          ...p,
+                          educatorId: e.target.value || undefined,
+                          educator: edu ? `${edu.nombre ?? ''} ${edu.apellido ?? ''}`.trim() : '',
+                        }));
+                      }}
+                      style={{ width: '100%', padding: '9px 12px', background: C.surfaceAlt, border: `1px solid ${C.border}`, color: C.text, fontSize: '0.82rem', outline: 'none', borderRadius: 2, boxSizing: 'border-box', cursor: 'pointer' }}
+                    >
+                      <option value="">— Sin educador asignado —</option>
+                      {educators.map(ed => (
+                        <option key={ed.id} value={ed.id}>
+                          {`${ed.nombre ?? ''} ${ed.apellido ?? ''}`.trim()} {ed.especialidad ? `· ${ed.especialidad}` : ''}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>Capacidad</label>

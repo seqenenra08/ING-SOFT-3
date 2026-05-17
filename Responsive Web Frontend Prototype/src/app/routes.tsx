@@ -57,6 +57,7 @@ import { ReportsCenter } from './pages/venues/backoffice/ReportsCenter';
 import { VenuesManagement } from './pages/venues/backoffice/VenuesManagement';
 import { EventsManagement } from './pages/venues/backoffice/EventsManagement';
 import { BackofficeLayout } from './components/venues/BackofficeLayout';
+import { VenuesPublicLayout } from './components/venues/VenuesPublicLayout';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) => {
@@ -227,23 +228,14 @@ export const router = createBrowserRouter([
   // Venues public routes
   {
     path: '/escenarios',
-    element: <VenuesLanding />
-  },
-  {
-    path: '/escenarios/catalogo',
-    element: <VenuesCatalog />
-  },
-  {
-    path: '/escenarios/detalle/:id',
-    element: <VenueDetail />
-  },
-  {
-    path: '/escenarios/solicitar/:id',
-    element: <RentalRequestWizard />
-  },
-  {
-    path: '/escenarios/seguimiento',
-    element: <RequestTracking />
+    element: <VenuesPublicLayout />,
+    children: [
+      { index: true,                    element: <VenuesLanding /> },
+      { path: 'catalogo',               element: <VenuesCatalog /> },
+      { path: 'detalle/:id',            element: <VenueDetail /> },
+      { path: 'solicitar/:id',          element: <RentalRequestWizard /> },
+      { path: 'seguimiento',            element: <RequestTracking /> },
+    ],
   },
 
   // Venues backoffice routes

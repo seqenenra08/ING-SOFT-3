@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Search, FileText, CheckCircle, Clock, AlertTriangle, ArrowRight } from 'lucide-react';
-import { rentalRequests } from '../../data/venuesData';
+import { Search, CheckCircle } from 'lucide-react';
+import { venuesService } from '../../services/venuesService';
 import { C } from '../../theme';
 
 const statusTimeline: Record<string, { steps: string[]; current: number }> = {
@@ -23,8 +23,9 @@ export function RequestTracking() {
   const [found, setFound] = useState<any>(null);
   const [searched, setSearched] = useState(false);
 
-  const handleSearch = () => {
-    const result = (rentalRequests as any[]).find(r =>
+  const handleSearch = async () => {
+    const requests = await venuesService.getRequests();
+    const result = requests.find(r =>
       r.requestNumber?.toLowerCase() === query.toLowerCase() ||
       r.clientEmail?.toLowerCase() === query.toLowerCase()
     );
@@ -69,7 +70,7 @@ export function RequestTracking() {
             </button>
           </div>
           <p style={{ fontSize: '0.68rem', color: C.subtle, marginTop: 8 }}>
-            Prueba con: SGE-2026-001, SGE-2026-002 o SGE-2026-003
+            Prueba con: SGE-2026-001, SGE-2026-002 o SGE-2026-004
           </p>
         </motion.div>
 
@@ -96,7 +97,7 @@ export function RequestTracking() {
                 {[
                   { label: 'Cliente',   value: found.clientName  },
                   { label: 'Escenario', value: found.venueName   },
-                  { label: 'Fecha',     value: found.requestDate },
+                  { label: 'Fecha',     value: found.startDate   },
                   { label: 'Uso',       value: found.eventType ?? 'Evento cultural' },
                 ].map(item => (
                   <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between' }}>

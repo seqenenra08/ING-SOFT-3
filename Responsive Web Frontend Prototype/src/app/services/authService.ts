@@ -4,6 +4,7 @@
  */
 import { api, isApiConfigured, setToken, removeToken } from './api';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { sha256 } from './crypto';
 
 export type UserRole = 'estudiante' | 'educador' | 'administrador';
 
@@ -55,25 +56,51 @@ function roleFromEmail(email: string): UserRole {
 }
 
 async function supabaseLogin(email: string, password: string): Promise<AuthResponse> {
+  // 1. Try Supabase Auth first (works for admin accounts registered via Auth)
   const { data, error } = await supabase!.auth.signInWithPassword({ email, password });
-  if (error) throw new Error(error.message);
 
-  // Obtener perfil de la tabla users
+  if (!error && data.user) {
+    const { data: profile } = await supabase!
+      .from('users')
+      .select('id, name, role')
+      .eq('id', data.user.id)
+      .single();
+
+    const user: AuthUser = {
+      id:    data.user.id,
+      name:  profile?.name ?? email.split('@')[0],
+      email: data.user.email!,
+      role:  (profile?.role as UserRole) ?? roleFromEmail(email),
+    };
+    const token = data.session!.access_token;
+    setToken(token);
+    return { token, user };
+  }
+
+  // 2. Fallback: query custom users table by email + SHA-256 password check
   const { data: profile } = await supabase!
     .from('users')
-    .select('id, name, role')
-    .eq('id', data.user!.id)
+    .select('id, name, role, email, password_hash')
+    .eq('email', email)
     .single();
 
-  const user: AuthUser = {
-    id:    data.user!.id,
-    name:  profile?.name ?? email.split('@')[0],
-    email: data.user!.email!,
-    role:  (profile?.role as UserRole) ?? roleFromEmail(email),
-  };
-  const token = data.session!.access_token;
-  setToken(token);
-  return { token, user };
+  if (profile) {
+    const hash = await sha256(password);
+    if (profile.password_hash !== hash) {
+      throw new Error('Credenciales inválidas');
+    }
+    const user: AuthUser = {
+      id:    profile.id,
+      name:  profile.name ?? email.split('@')[0],
+      email: profile.email ?? email,
+      role:  (profile.role as UserRole) ?? roleFromEmail(email),
+    };
+    const token = `prototype_token_${profile.id}`;
+    setToken(token);
+    return { token, user };
+  }
+
+  throw new Error('Credenciales inválidas');
 }
 
 async function supabaseRegister(payload: RegisterPayload): Promise<AuthResponse> {

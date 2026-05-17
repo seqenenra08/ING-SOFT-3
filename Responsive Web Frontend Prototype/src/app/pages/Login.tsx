@@ -19,10 +19,10 @@ export const Login = () => {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
-      if (email.includes('estudiante')) navigate('/estudiante/dashboard');
-      else if (email.includes('educador')) navigate('/educador/dashboard');
-      else if (email.includes('admin')) navigate('/admin/dashboard');
+      const role = await login(email, password);
+      if (role === 'estudiante')    navigate('/estudiante/dashboard');
+      else if (role === 'educador') navigate('/educador/dashboard');
+      else                          navigate('/admin/dashboard');
     } catch {
       setError('Credenciales incorrectas. Verifica tu usuario y contraseña.');
     } finally {
@@ -103,15 +103,29 @@ export const Login = () => {
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         >
           {/* Mobile brand */}
-          <Link to="/" className="lg:hidden" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
-            <div style={{ width: 28, height: 28, background: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>
-              <BookOpen style={{ width: 12, height: 12, color: '#fff' }} />
-            </div>
-            <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, color: C.text, fontSize: '0.88rem' }}>Plataforma Lucy Tejada</span>
-          </Link>
+          <div className="lg:hidden" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+              <div style={{ width: 28, height: 28, background: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>
+                <BookOpen style={{ width: 12, height: 12, color: '#fff' }} />
+              </div>
+              <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, color: C.text, fontSize: '0.88rem' }}>Plataforma Lucy Tejada</span>
+            </Link>
+            <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: C.muted, textDecoration: 'none' }}
+              onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = C.text}
+              onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = C.muted}>
+              <ArrowLeft style={{ width: 13, height: 13 }} /> Inicio
+            </Link>
+          </div>
 
           {/* Top accent */}
           <div style={{ height: 3, background: accentBar, marginBottom: 28 }} />
+
+          {/* Back link (desktop, right panel) */}
+          <Link to="/" className="hidden lg:inline-flex" style={{ alignItems: 'center', gap: 5, fontSize: '0.75rem', color: C.muted, textDecoration: 'none', marginBottom: 20, display: 'inline-flex' }}
+            onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = C.text}
+            onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = C.muted}>
+            <ArrowLeft style={{ width: 13, height: 13 }} /> Volver al inicio
+          </Link>
 
           <p style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: C.active, marginBottom: 8 }}>Portal educativo</p>
           <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '1.6rem', fontWeight: 700, color: C.text, marginBottom: 6 }}>Iniciar Sesión</h1>
@@ -176,10 +190,10 @@ export const Login = () => {
             <p style={{ fontSize: '0.7rem', fontWeight: 700, color: C.primary, marginBottom: 8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               Credenciales de prueba
             </p>
-            <div style={{ fontSize: '0.72rem', color: C.muted, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <p><strong style={{ color: C.primary }}>Estudiante:</strong> estudiante@demo.com / password</p>
-              <p><strong style={{ color: C.primary }}>Educador:</strong> educador@demo.com / password</p>
-              <p><strong style={{ color: C.primary }}>Admin:</strong> admin@demo.com / password</p>
+            <div style={{ fontSize: '0.72rem', color: C.muted, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <p><strong style={{ color: C.primary }}>Estudiante:</strong> sebastian.munoz@email.com / password123</p>
+              <p><strong style={{ color: C.primary }}>Educador:</strong> roberto.gomez@lucytejada.edu.co / password123</p>
+              <p><strong style={{ color: C.primary }}>Admin:</strong> admin@lucytejada.edu.co / password123</p>
             </div>
           </div>
         </motion.div>

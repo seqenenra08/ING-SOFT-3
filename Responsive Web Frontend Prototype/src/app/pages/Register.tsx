@@ -2,8 +2,38 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { BookOpen, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Loader2, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { C, accentBar } from '../theme';
+
+interface FieldProps {
+  id: string; label: string; type?: string; placeholder?: string; required?: boolean;
+  value: string;
+  error?: string;
+  onChange: React.ChangeEventHandler<HTMLInputElement>;
+}
+
+function Field({ id, label, type = 'text', placeholder = '', required = false, value, error, onChange }: FieldProps) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: C.text, marginBottom: 5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+        {label}{required && <span style={{ color: C.active }}> *</span>}
+      </label>
+      <input id={id} name={id} type={type}
+        value={value} onChange={onChange}
+        placeholder={placeholder}
+        style={{
+          width: '100%', padding: '9px 12px', fontSize: '0.82rem',
+          background: C.surfaceAlt, border: `1px solid ${error ? C.active : C.border}`,
+          color: C.text, outline: 'none', borderRadius: 2, boxSizing: 'border-box',
+          transition: 'border-color 0.15s',
+        }}
+        onFocus={e => e.target.style.borderColor = C.primary}
+        onBlur={e => e.target.style.borderColor = error ? C.active : C.border}
+      />
+      {error && <p style={{ fontSize: '0.7rem', color: C.active, marginTop: 3 }}>{error}</p>}
+    </div>
+  );
+}
 
 export const Register = () => {
   const [formData, setFormData] = useState({
@@ -48,27 +78,9 @@ export const Register = () => {
     }
   };
 
-  const Field = ({ id, label, type = 'text', placeholder = '', required = false }: {
-    id: string; label: string; type?: string; placeholder?: string; required?: boolean;
-  }) => (
-    <div>
-      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: C.text, marginBottom: 5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-        {label}{required && <span style={{ color: C.active }}> *</span>}
-      </label>
-      <input id={id} name={id} type={type}
-        value={(formData as any)[id]} onChange={handleChange}
-        placeholder={placeholder}
-        style={{
-          width: '100%', padding: '9px 12px', fontSize: '0.82rem',
-          background: C.surfaceAlt, border: `1px solid ${errors[id] ? C.active : C.border}`,
-          color: C.text, outline: 'none', borderRadius: 2, boxSizing: 'border-box',
-          transition: 'border-color 0.15s',
-        }}
-        onFocus={e => e.target.style.borderColor = C.primary}
-        onBlur={e => e.target.style.borderColor = errors[id] ? C.active : C.border}
-      />
-      {errors[id] && <p style={{ fontSize: '0.7rem', color: C.active, marginTop: 3 }}>{errors[id]}</p>}
-    </div>
+  const F = (id: string, label: string, type = 'text', placeholder = '', required = false) => (
+    <Field id={id} label={label} type={type} placeholder={placeholder} required={required}
+      value={(formData as any)[id]} error={errors[id]} onChange={handleChange} />
   );
 
   const sections = [
@@ -76,10 +88,10 @@ export const Register = () => {
       num: '01', title: 'Información Personal', color: C.primary,
       fields: (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-          <div style={{ flex: '1 1 200px' }}><Field id="nombre" label="Nombre" required /></div>
-          <div style={{ flex: '1 1 200px' }}><Field id="apellido" label="Apellido" required /></div>
-          <div style={{ flex: '1 1 200px' }}><Field id="documento" label="Documento de Identidad" required placeholder="1234567890" /></div>
-          <div style={{ flex: '1 1 200px' }}><Field id="fechaNacimiento" label="Fecha de Nacimiento" type="date" /></div>
+          <div style={{ flex: '1 1 200px' }}>{F('nombre', 'Nombre', 'text', '', true)}</div>
+          <div style={{ flex: '1 1 200px' }}>{F('apellido', 'Apellido', 'text', '', true)}</div>
+          <div style={{ flex: '1 1 200px' }}>{F('documento', 'Documento de Identidad', 'text', '1234567890', true)}</div>
+          <div style={{ flex: '1 1 200px' }}>{F('fechaNacimiento', 'Fecha de Nacimiento', 'date')}</div>
         </div>
       ),
     },
@@ -87,9 +99,9 @@ export const Register = () => {
       num: '02', title: 'Información de Contacto', color: C.gold,
       fields: (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-          <div style={{ flex: '1 1 100%' }}><Field id="email" label="Correo Electrónico" type="email" required placeholder="tu@email.com" /></div>
-          <div style={{ flex: '1 1 200px' }}><Field id="telefono" label="Teléfono" placeholder="320 123 4567" /></div>
-          <div style={{ flex: '1 1 200px' }}><Field id="direccion" label="Dirección" placeholder="Calle 10 #20-30" /></div>
+          <div style={{ flex: '1 1 100%' }}>{F('email', 'Correo Electrónico', 'email', 'tu@email.com', true)}</div>
+          <div style={{ flex: '1 1 200px' }}>{F('telefono', 'Teléfono', 'text', '320 123 4567')}</div>
+          <div style={{ flex: '1 1 200px' }}>{F('direccion', 'Dirección', 'text', 'Calle 10 #20-30')}</div>
         </div>
       ),
     },
@@ -97,8 +109,8 @@ export const Register = () => {
       num: '03', title: 'Información del Acudiente', color: C.muted,
       fields: (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-          <div style={{ flex: '1 1 200px' }}><Field id="acudiente" label="Nombre del Acudiente" /></div>
-          <div style={{ flex: '1 1 200px' }}><Field id="telefonoAcudiente" label="Teléfono del Acudiente" placeholder="315 123 4567" /></div>
+          <div style={{ flex: '1 1 200px' }}>{F('acudiente', 'Nombre del Acudiente')}</div>
+          <div style={{ flex: '1 1 200px' }}>{F('telefonoAcudiente', 'Teléfono del Acudiente', 'text', '315 123 4567')}</div>
         </div>
       ),
     },
@@ -106,8 +118,8 @@ export const Register = () => {
       num: '04', title: 'Seguridad', color: C.active,
       fields: (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-          <div style={{ flex: '1 1 200px' }}><Field id="password" label="Contraseña" type="password" required placeholder="••••••••" /></div>
-          <div style={{ flex: '1 1 200px' }}><Field id="confirmPassword" label="Confirmar Contraseña" type="password" required placeholder="••••••••" /></div>
+          <div style={{ flex: '1 1 200px' }}>{F('password', 'Contraseña', 'password', '••••••••', true)}</div>
+          <div style={{ flex: '1 1 200px' }}>{F('confirmPassword', 'Confirmar Contraseña', 'password', '••••••••', true)}</div>
         </div>
       ),
     },
@@ -117,13 +129,20 @@ export const Register = () => {
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'Inter', sans-serif", padding: '40px 24px' }}>
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
 
-        {/* Brand */}
-        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-          <div style={{ width: 28, height: 28, background: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>
-            <BookOpen style={{ width: 12, height: 12, color: '#fff' }} />
-          </div>
-          <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, color: C.text, fontSize: '0.88rem' }}>Plataforma Lucy Tejada</span>
-        </Link>
+        {/* Brand + back */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+            <div style={{ width: 28, height: 28, background: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>
+              <BookOpen style={{ width: 12, height: 12, color: '#fff' }} />
+            </div>
+            <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, color: C.text, fontSize: '0.88rem' }}>Plataforma Lucy Tejada</span>
+          </Link>
+          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: C.muted, textDecoration: 'none', transition: 'color 0.15s' }}
+            onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = C.text}
+            onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = C.muted}>
+            <ArrowLeft style={{ width: 13, height: 13 }} /> Volver al inicio
+          </Link>
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}

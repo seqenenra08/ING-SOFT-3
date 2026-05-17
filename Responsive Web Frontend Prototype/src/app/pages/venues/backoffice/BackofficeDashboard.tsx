@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
-import { FileText, DollarSign, CheckCircle2, AlertTriangle, ArrowRight, TrendingUp, Calendar } from 'lucide-react';
+import { FileText, DollarSign, CheckCircle2, AlertTriangle, ArrowRight, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { C } from '../../../theme';
+import { venuesService } from '../../../services/venuesService';
 
 const monthlyData = [
   { month: 'Ene', solicitudes: 12, eventos: 10 },
@@ -18,12 +20,6 @@ const revenueData = [
   { month: 'Abr', ingresos: 18000000 },
 ];
 
-const recentRequests = [
-  { id: 'r4', number: 'SGE-2026-004', venue: 'Sala Lucy Tejada',          client: 'Colectivo Pacífico Visual',   status: 'enviada',     date: '2026-04-19' },
-  { id: 'r3', number: 'SGE-2026-003', venue: 'Teatro Jorge Isaacs',        client: 'Cía. Danza Contemporánea',   status: 'pagada',      date: '2026-03-20' },
-  { id: 'r2', number: 'SGE-2026-002', venue: 'Salón Sebastián Belalcázar', client: 'Universidad del Valle',       status: 'en_revision', date: '2026-04-18' },
-];
-
 const statusStyle: Record<string, { label: string; color: string }> = {
   pagada:      { label: 'Pagada',       color: '#4b7a30' },
   en_revision: { label: 'En revisión',  color: C.gold    },
@@ -31,14 +27,6 @@ const statusStyle: Record<string, { label: string; color: string }> = {
   aprobada:    { label: 'Aprobada',     color: '#4b7a30' },
   rechazada:   { label: 'Rechazada',    color: C.active  },
 };
-
-const kpis = [
-  { value: '8',   label: 'Solicitudes',        sub: '3 pendientes',   icon: FileText,     color: C.primary },
-  { value: '5',   label: 'Eventos programados', sub: 'Este mes',       icon: CheckCircle2, color: '#4b7a30' },
-  { value: '$42M',label: 'Ingresos marzo',      sub: 'COP acumulado',  icon: DollarSign,   color: C.gold    },
-  { value: '$18M',label: 'Ingresos abril',       sub: 'COP acumulado',  icon: TrendingUp,   color: C.active  },
-  { value: '2',   label: 'Mantenimiento',       sub: 'Tickets abiertos',icon: AlertTriangle,color: C.active  },
-];
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (active && payload?.length) {
@@ -53,6 +41,34 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 };
 
 export function BackofficeDashboard() {
+  const [kpiData, setKpiData] = useState({ requests: 0, pending: 0, events: 0, revenue: 0, maintenance: 0 });
+  const [recentRequests, setRecentRequests] = useState<any[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      venuesService.getRequests(),
+      venuesService.getEvents(),
+      venuesService.getPayments(),
+      venuesService.getMaintenanceTickets(),
+    ]).then(([requests, events, payments, tickets]) => {
+      const pending = requests.filter(r => r.status === 'enviada' || r.status === 'en_revision').length;
+      const openTickets = tickets.filter(t => t.status !== 'cerrado' && t.status !== 'resuelto').length;
+      const totalRevenue = payments
+        .filter(p => p.status === 'completado' || p.status === 'pagado')
+        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      setKpiData({ requests: requests.length, pending, events: events.length, revenue: totalRevenue, maintenance: openTickets });
+      setRecentRequests(requests.slice(0, 3));
+    }).catch(() => {});
+  }, []);
+
+  const kpis = [
+    { value: String(kpiData.requests), label: 'Solicitudes',         sub: `${kpiData.pending} pendientes`,  icon: FileText,     color: C.primary },
+    { value: String(kpiData.events),   label: 'Eventos programados',  sub: 'En el sistema',                 icon: CheckCircle2, color: '#4b7a30' },
+    { value: kpiData.revenue > 0 ? `$${(kpiData.revenue / 1000000).toFixed(0)}M` : '$0', label: 'Ingresos completados', sub: 'COP acumulado', icon: DollarSign, color: C.gold },
+    { value: String(kpiData.maintenance), label: 'Mantenimiento',     sub: 'Tickets abiertos',              icon: AlertTriangle, color: C.active  },
+    { value: '', label: '', sub: '', icon: TrendingUp, color: C.subtle },
+  ].filter(k => k.label);
+
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'Inter', sans-serif" }}>
 
@@ -153,19 +169,22 @@ export function BackofficeDashboard() {
                 <span style={{ fontSize: '0.68rem', color: C.active, cursor: 'pointer', fontWeight: 600 }}>Ver todas</span>
               </Link>
             </div>
+            {recentRequests.length === 0 && (
+              <div style={{ padding: '20px 18px', textAlign: 'center', color: C.subtle, fontSize: '0.78rem' }}>Sin solicitudes recientes</div>
+            )}
             {recentRequests.map((r, i, arr) => {
-              const ss = statusStyle[r.status] ?? statusStyle.enviada;
+              const ss = statusStyle[r.status as string] ?? statusStyle.enviada;
               return (
                 <div key={r.id}>
                   <div style={{ padding: '12px 18px', borderLeft: `3px solid ${ss.color}44` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
-                      <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.75rem', color: C.text }}>{r.number}</p>
+                      <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.75rem', color: C.text }}>{r.requestNumber ?? r.id}</p>
                       <span style={{ fontSize: '0.6rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: ss.color, border: `1px solid ${ss.color}44`, padding: '1px 5px', borderRadius: 2 }}>
                         {ss.label}
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.7rem', color: C.muted }}>{r.client}</p>
-                    <p style={{ fontSize: '0.68rem', color: C.subtle, marginTop: 2 }}>{r.venue} · {r.date}</p>
+                    <p style={{ fontSize: '0.7rem', color: C.muted }}>{r.organizationName ?? r.clientName ?? '—'}</p>
+                    <p style={{ fontSize: '0.68rem', color: C.subtle, marginTop: 2 }}>{r.venueName ?? '—'} · {r.submittedAt?.split('T')[0] ?? r.startDate ?? ''}</p>
                   </div>
                   {i < arr.length - 1 && <div style={{ height: 1, background: C.border }} />}
                 </div>

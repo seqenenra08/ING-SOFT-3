@@ -1,19 +1,52 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { User, Mail, Phone, MapPin, Calendar, Save } from 'lucide-react';
+import { toast } from 'sonner';
 import { C } from '../../theme';
+import { useAuth } from '../../context/AuthContext';
+import { studentsService } from '../../services/studentsService';
 
 export const Profile = () => {
+  const { user } = useAuth();
   const [editing, setEditing] = useState(false);
+  const [studentId, setStudentId] = useState<string | null>(null);
   const [form, setForm] = useState({
-    nombre: 'Camila', apellido: 'Rodríguez', email: 'camila@estudiante.com',
-    telefono: '315 234 5678', direccion: 'Cra 15 #32-10, Pereira',
-    fechaNacimiento: '2005-03-14', documento: '1002345678',
-    acudiente: 'María Rodríguez', telefonoAcudiente: '311 987 6543',
+    nombre: '', apellido: '', email: '',
+    telefono: '', direccion: '',
+    fechaNacimiento: '', documento: '',
+    acudiente: '', telefonoAcudiente: '',
   });
+
+  useEffect(() => {
+    if (!user?.email) return;
+    studentsService.getAll().then(students => {
+      const s = students.find(st => st.email === user.email);
+      if (s) {
+        setStudentId(s.id);
+        setForm({
+          nombre:            s.nombre            ?? '',
+          apellido:          s.apellido          ?? '',
+          email:             s.email             ?? '',
+          telefono:          s.telefono          ?? '',
+          direccion:         s.direccion         ?? '',
+          fechaNacimiento:   s.fechaNacimiento   ?? '',
+          documento:         s.documento         ?? '',
+          acudiente:         s.acudiente         ?? '',
+          telefonoAcudiente: s.telefonoAcudiente ?? '',
+        });
+      }
+    });
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSave = async () => {
+    if (!studentId) return;
+    await studentsService.update(studentId, form);
+    toast.success('Perfil actualizado correctamente');
+    setEditing(false);
+  };
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '9px 12px', fontSize: '0.82rem',
@@ -120,7 +153,7 @@ export const Profile = () => {
 
         {editing && (
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button onClick={() => setEditing(false)} style={{
+            <button onClick={handleSave} style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '10px 24px', background: C.primary, color: '#fff',
               fontWeight: 600, fontSize: '0.85rem', border: 'none', cursor: 'pointer', borderRadius: 2,

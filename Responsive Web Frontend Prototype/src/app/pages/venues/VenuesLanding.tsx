@@ -1,20 +1,15 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { Building2, Calendar, FileText, Shield, Search, MapPin, ArrowRight } from 'lucide-react';
 import { C } from '../../theme';
+import { venuesService } from '../../services/venuesService';
 
 const steps = [
   { num: '01', icon: Search,   title: 'Explora',    desc: 'Busca el espacio ideal según capacidad, ubicación y tipo de evento' },
   { num: '02', icon: Calendar, title: 'Solicita',   desc: 'Completa la solicitud en línea con los datos de tu evento' },
   { num: '03', icon: FileText, title: 'Aprobación', desc: 'Revisión administrativa y jurídica de tu solicitud' },
   { num: '04', icon: Shield,   title: 'Realiza',    desc: 'Paga, firma el contrato y disfruta tu evento' },
-];
-
-const stats = [
-  { value: '12',   label: 'Escenarios disponibles' },
-  { value: '2.5K+',label: 'Personas capacidad total' },
-  { value: '150+', label: 'Eventos este año' },
-  { value: '98%',  label: 'Satisfacción usuarios' },
 ];
 
 const VC = {
@@ -25,42 +20,23 @@ const VC = {
 };
 
 export function VenuesLanding() {
+  const [venueCount, setVenueCount] = useState<number | null>(null);
+  const [requestCount, setRequestCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    venuesService.getVenues().then(v => setVenueCount(v.length)).catch(() => {});
+    venuesService.getRequests().then(r => setRequestCount(r.length)).catch(() => {});
+  }, []);
+
+  const stats = [
+    { value: venueCount !== null ? String(venueCount) : '...', label: 'Escenarios disponibles' },
+    { value: '2.5K+', label: 'Personas capacidad total' },
+    { value: requestCount !== null ? `${requestCount}+` : '...', label: 'Solicitudes registradas' },
+    { value: '98%',   label: 'Satisfacción usuarios' },
+  ];
+
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'Inter', sans-serif" }}>
-
-      {/* Accent top */}
-      <div style={{ height: 3, background: `linear-gradient(90deg, ${VC.primary}, ${VC.active}, ${VC.gold})` }} />
-
-      {/* Header */}
-      <header style={{ background: C.dark, borderBottom: `1px solid #2a1212`, position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 32px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 30, height: 30, background: VC.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>
-              <Building2 style={{ width: 13, height: 13, color: '#fff' }} />
-            </div>
-            <div>
-              <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, color: '#f5f0ef', fontSize: '0.82rem', lineHeight: 1.2 }}>
-                Sistema de Gestión de Escenarios Culturales
-              </p>
-              <p style={{ fontSize: '0.6rem', color: '#a08888', letterSpacing: '0.08em' }}>Secretaría de Cultura · Alcaldía de Pereira</p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Link to="/escenarios/seguimiento">
-              <button style={{ padding: '6px 14px', background: 'transparent', border: `1px solid #2a1212`, color: '#a08888', fontSize: '0.78rem', cursor: 'pointer', borderRadius: 2, transition: 'all 0.15s' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = VC.primary; (e.currentTarget as HTMLButtonElement).style.color = '#f5f0ef'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#2a1212'; (e.currentTarget as HTMLButtonElement).style.color = '#a08888'; }}>
-                Seguir mi solicitud
-              </button>
-            </Link>
-            <Link to="/escenarios/backoffice/login">
-              <button style={{ padding: '6px 14px', background: VC.primary, color: '#fff', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', border: 'none', borderRadius: 2 }}>
-                Acceso funcionarios
-              </button>
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div style={{ background: C.bg, fontFamily: "'Inter', sans-serif" }}>
 
       {/* Hero */}
       <section style={{ background: C.dark, padding: '80px 32px', position: 'relative', overflow: 'hidden' }}>

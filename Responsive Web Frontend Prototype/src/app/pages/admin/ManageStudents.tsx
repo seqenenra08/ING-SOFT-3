@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Users, X, Plus, Mail, Phone, MapPin, Calendar, User, BookOpen, Save } from 'lucide-react';
+import { Search, Users, X, Plus, Mail, Phone, MapPin, Calendar, User, BookOpen, Save, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { C } from '../../theme';
 import { studentsService, type Student } from '../../services/studentsService';
+import { programsService, type Program } from '../../services/programsService';
 
 const EMPTY_FORM = { nombre: '', apellido: '', email: '', documento: '', tipoDocumento: 'CC', telefono: '', direccion: '', fechaNacimiento: '', acudiente: '', telefonoAcudiente: '' };
 
@@ -13,8 +14,11 @@ export const ManageStudents = () => {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Student | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [selectedPrograms, setSelectedPrograms] = useState<Program[]>([]);
+  const [loadingPrograms, setLoadingPrograms] = useState(false);
 
   useEffect(() => {
     studentsService.getAll()
@@ -23,11 +27,44 @@ export const ManageStudents = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!selected) { setSelectedPrograms([]); return; }
+    setLoadingPrograms(true);
+    programsService.getMyEnrollments(selected.id)
+      .then(setSelectedPrograms)
+      .catch(() => setSelectedPrograms([]))
+      .finally(() => setLoadingPrograms(false));
+  }, [selected?.id]);
+
   const filtered = students.filter(s => {
     const q = search.toLowerCase();
     const name = `${s.nombre ?? ''} ${s.apellido ?? ''}`.toLowerCase();
     return name.includes(q) || s.email?.toLowerCase().includes(q) || s.documento?.includes(q);
   });
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setShowModal(true);
+  };
+
+  const openEdit = (s: Student, ev?: React.MouseEvent) => {
+    ev?.stopPropagation();
+    setEditingId(s.id);
+    setForm({
+      nombre: s.nombre ?? '',
+      apellido: s.apellido ?? '',
+      email: s.email ?? '',
+      documento: s.documento ?? '',
+      tipoDocumento: 'CC',
+      telefono: s.telefono ?? '',
+      direccion: s.direccion ?? '',
+      fechaNacimiento: s.fechaNacimiento ?? '',
+      acudiente: s.acudiente ?? '',
+      telefonoAcudiente: s.telefonoAcudiente ?? '',
+    });
+    setShowModal(true);
+  };
 
   const handleSave = async () => {
     if (!form.nombre || !form.apellido || !form.email) {
@@ -36,22 +73,43 @@ export const ManageStudents = () => {
     }
     setSaving(true);
     try {
-      const created = await studentsService.create({
+      const payload = {
         nombre: form.nombre, apellido: form.apellido,
         email: form.email, documento: form.documento,
         telefono: form.telefono, direccion: form.direccion,
         fechaNacimiento: form.fechaNacimiento,
         acudiente: form.acudiente, telefonoAcudiente: form.telefonoAcudiente,
-        programas: [], estado: 'Activo',
-      });
-      setStudents(prev => [...prev, created]);
+      };
+
+      if (editingId) {
+        const updated = await studentsService.update(editingId, payload);
+        setStudents(prev => prev.map(s => s.id === editingId ? updated : s));
+        if (selected?.id === editingId) setSelected(updated);
+        toast.success('Estudiante actualizado exitosamente');
+      } else {
+        const created = await studentsService.create({ ...payload, estado: 'Activo' });
+        setStudents(prev => [...prev, created]);
+        toast.success('Estudiante registrado exitosamente');
+      }
       setShowModal(false);
       setForm(EMPTY_FORM);
-      toast.success('Estudiante registrado exitosamente');
+      setEditingId(null);
     } catch (e: any) {
       toast.error(e.message ?? 'Error al guardar');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (s: Student) => {
+    if (!window.confirm(`¿Eliminar a ${s.nombre} ${s.apellido}? Esta acción no se puede deshacer.`)) return;
+    try {
+      await studentsService.remove(s.id);
+      setStudents(prev => prev.filter(st => st.id !== s.id));
+      setSelected(null);
+      toast.success('Estudiante eliminado');
+    } catch (e: any) {
+      toast.error(e.message ?? 'Error al eliminar');
     }
   };
 
@@ -67,7 +125,7 @@ export const ManageStudents = () => {
             <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '1.6rem', fontWeight: 700, color: '#fff' }}>Gestión de Estudiantes</h1>
             <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>{students.length} estudiantes registrados</p>
           </div>
-          <button onClick={() => setShowModal(true)}
+          <button onClick={openCreate}
             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 20px', background: C.primary, color: '#fff', fontWeight: 600, fontSize: '0.8rem', border: 'none', cursor: 'pointer', borderRadius: 2 }}>
             <Plus style={{ width: 14, height: 14 }} /> Nuevo Estudiante
           </button>
@@ -96,8 +154,8 @@ export const ManageStudents = () => {
             <div style={{ padding: '10px 20px', background: C.surfaceAlt, borderBottom: `1px solid ${C.border}`, display: 'flex' }}>
               <span style={{ flex: 2, fontSize: '0.65rem', fontWeight: 600, color: C.subtle, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Estudiante</span>
               <span style={{ flex: 1, fontSize: '0.65rem', fontWeight: 600, color: C.subtle, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Correo</span>
-              <span style={{ fontSize: '0.65rem', fontWeight: 600, color: C.subtle, textTransform: 'uppercase', letterSpacing: '0.06em', width: 80, textAlign: 'center' }}>Programas</span>
               <span style={{ fontSize: '0.65rem', fontWeight: 600, color: C.subtle, textTransform: 'uppercase', letterSpacing: '0.06em', width: 80, textAlign: 'center' }}>Estado</span>
+              <span style={{ width: 70 }} />
             </div>
 
             {loading && (
@@ -128,14 +186,15 @@ export const ManageStudents = () => {
                     <p style={{ fontSize: '0.75rem', color: C.muted }}>{s.email}</p>
                   </div>
                   <div style={{ width: 80, textAlign: 'center' }}>
-                    <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, color: C.text, fontSize: '0.85rem' }}>
-                      {(s.programas ?? []).length}
-                    </span>
-                  </div>
-                  <div style={{ width: 80, textAlign: 'center' }}>
                     <span style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.active, border: `1px solid ${C.active}44`, padding: '2px 6px', borderRadius: 2 }}>
                       {s.estado ?? 'Activo'}
                     </span>
+                  </div>
+                  <div style={{ width: 70, display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+                    <button onClick={ev => openEdit(s, ev)}
+                      style={{ padding: '4px 6px', background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, cursor: 'pointer', borderRadius: 2, display: 'flex', alignItems: 'center' }}>
+                      <Edit2 style={{ width: 11, height: 11 }} />
+                    </button>
                   </div>
                 </div>
                 {i < arr.length - 1 && <div style={{ height: 1, background: C.border }} />}
@@ -206,20 +265,34 @@ export const ManageStudents = () => {
                   {/* Programas */}
                   <div>
                     <p style={{ fontSize: '0.65rem', fontWeight: 600, color: C.text, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <BookOpen style={{ width: 11, height: 11 }} /> Programas inscritos ({(selected.programas ?? []).length})
+                      <BookOpen style={{ width: 11, height: 11 }} /> Programas inscritos ({loadingPrograms ? '…' : selectedPrograms.length})
                     </p>
-                    {(selected.programas ?? []).length === 0
-                      ? <p style={{ fontSize: '0.72rem', color: C.subtle }}>Sin programas activos</p>
-                      : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                          {(selected.programas as any[]).map((p: any) => (
-                            <div key={typeof p === 'string' ? p : p.id} style={{ padding: '5px 10px', background: C.tint, border: `1px solid ${C.border}`, fontSize: '0.72rem', color: C.primary, borderRadius: 2 }}>
-                              {typeof p === 'string' ? p : (p.name ?? p)}
-                            </div>
-                          ))}
-                        </div>
-                      )
+                    {loadingPrograms
+                      ? <p style={{ fontSize: '0.72rem', color: C.subtle }}>Cargando...</p>
+                      : selectedPrograms.length === 0
+                        ? <p style={{ fontSize: '0.72rem', color: C.subtle }}>Sin programas activos</p>
+                        : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                            {selectedPrograms.map(p => (
+                              <div key={p.id} style={{ padding: '5px 10px', background: C.tint, border: `1px solid ${C.border}`, fontSize: '0.72rem', color: C.primary, borderRadius: 2 }}>
+                                {p.name}
+                              </div>
+                            ))}
+                          </div>
+                        )
                     }
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                    <button onClick={() => openEdit(selected)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 12px', background: C.primary, color: '#fff', border: 'none', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', borderRadius: 2 }}>
+                      <Edit2 style={{ width: 13, height: 13 }} /> Editar Estudiante
+                    </button>
+                    <button onClick={() => handleDelete(selected)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 12px', background: 'transparent', color: C.active, border: `1px solid ${C.active}44`, fontSize: '0.75rem', cursor: 'pointer', borderRadius: 2 }}>
+                      <Trash2 style={{ width: 13, height: 13 }} /> Eliminar
+                    </button>
                   </div>
                 </div>
               </motion.div>
@@ -228,7 +301,7 @@ export const ManageStudents = () => {
         </div>
       </div>
 
-      {/* Modal: Nuevo Estudiante */}
+      {/* Modal: Nuevo / Editar Estudiante */}
       <AnimatePresence>
         {showModal && (
           <motion.div
@@ -244,7 +317,9 @@ export const ManageStudents = () => {
               <div style={{ padding: '16px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 3, height: 14, background: C.primary, borderRadius: 2 }} />
-                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.88rem', color: C.text }}>NUEVO ESTUDIANTE</span>
+                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.88rem', color: C.text }}>
+                    {editingId ? 'EDITAR ESTUDIANTE' : 'NUEVO ESTUDIANTE'}
+                  </span>
                 </div>
                 <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                   <X style={{ width: 16, height: 16, color: C.subtle }} />
@@ -285,7 +360,7 @@ export const ManageStudents = () => {
                   <button onClick={handleSave} disabled={saving}
                     style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px', background: saving ? C.border : C.primary, color: '#fff', fontWeight: 600, fontSize: '0.82rem', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', borderRadius: 2 }}>
                     <Save style={{ width: 14, height: 14 }} />
-                    {saving ? 'Guardando...' : 'Registrar Estudiante'}
+                    {saving ? 'Guardando...' : editingId ? 'Guardar Cambios' : 'Registrar Estudiante'}
                   </button>
                 </div>
               </div>
@@ -296,4 +371,3 @@ export const ManageStudents = () => {
     </div>
   );
 };
-

@@ -1,8 +1,8 @@
 import { motion } from 'motion/react';
 import { Download, BarChart3, DollarSign, FileText, Wrench, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { toast } from 'sonner';
 import { C } from '../../../theme';
+import { rentalRequests, contracts, payments, maintenanceTickets } from '../../../data/venuesData';
 
 const monthlyData = [
   { month: 'Ene', solicitudes: 12, ingresos: 28 },
@@ -30,6 +30,54 @@ const ChartTooltip = ({ active, payload, label }: any) => {
   }
   return null;
 };
+
+function downloadReport(reportName: string) {
+  let content = '';
+  const fmt = (n: number) =>
+    new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
+
+  if (reportName.includes('Solicitudes')) {
+    content = rentalRequests.map(r =>
+      `<tr><td>${r.requestNumber}</td><td>${r.clientName}</td><td>${r.venueName}</td><td>${r.startDate}</td><td>${r.status}</td></tr>`
+    ).join('');
+    content = `<table border="1" style="border-collapse:collapse;width:100%"><tr><th>N° Solicitud</th><th>Cliente</th><th>Escenario</th><th>Fecha</th><th>Estado</th></tr>${content}</table>`;
+  } else if (reportName.includes('Financiero')) {
+    content = payments.map(p =>
+      `<tr><td>${p.paymentNumber}</td><td>${p.clientName}</td><td>${fmt(p.amount)}</td><td>${p.paymentDate}</td><td>${p.status}</td></tr>`
+    ).join('');
+    content = `<table border="1" style="border-collapse:collapse;width:100%"><tr><th>N° Pago</th><th>Cliente</th><th>Monto</th><th>Fecha</th><th>Estado</th></tr>${content}</table>`;
+  } else if (reportName.includes('Contratos')) {
+    content = contracts.map(c =>
+      `<tr><td>${c.contractNumber}</td><td>${c.clientName}</td><td>${c.venueName}</td><td>${fmt(c.totalAmount)}</td><td>${c.status}</td></tr>`
+    ).join('');
+    content = `<table border="1" style="border-collapse:collapse;width:100%"><tr><th>N° Contrato</th><th>Cliente</th><th>Escenario</th><th>Valor</th><th>Estado</th></tr>${content}</table>`;
+  } else if (reportName.includes('Mantenimiento')) {
+    content = maintenanceTickets.map(t =>
+      `<tr><td>${t.ticketNumber}</td><td>${t.venueName}</td><td>${t.title}</td><td>${t.priority}</td><td>${t.status}</td><td>${t.cost ? fmt(t.cost) : '—'}</td></tr>`
+    ).join('');
+    content = `<table border="1" style="border-collapse:collapse;width:100%"><tr><th>Ticket</th><th>Escenario</th><th>Descripción</th><th>Prioridad</th><th>Estado</th><th>Costo</th></tr>${content}</table>`;
+  } else if (reportName.includes('Ocupación')) {
+    content = rentalRequests.filter(r => r.status === 'aprobada' || r.status === 'pagada' || r.status === 'evento_programado').map(r =>
+      `<tr><td>${r.venueName}</td><td>${r.eventName}</td><td>${r.startDate}</td><td>${r.attendees}</td><td>${r.status}</td></tr>`
+    ).join('');
+    content = content
+      ? `<table border="1" style="border-collapse:collapse;width:100%"><tr><th>Escenario</th><th>Evento</th><th>Fecha</th><th>Asistentes</th><th>Estado</th></tr>${content}</table>`
+      : '<p>No hay eventos confirmados en el período.</p>';
+  } else {
+    content = `<p>Reporte: ${reportName}</p>`;
+  }
+
+  const html = `<!DOCTYPE html><html><head><title>${reportName}</title>
+    <style>body{font-family:Arial;padding:40px} h1{color:#a16207} th,td{padding:8px;text-align:left} th{background:#faf7f5}</style>
+    </head><body>
+    <h1>${reportName}</h1>
+    <p style="color:#7a5050">SGE Escenarios Culturales &mdash; Generado: ${new Date().toLocaleDateString('es-CO')}</p>
+    <hr style="margin:16px 0"/>
+    ${content}
+    </body></html>`;
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); w.print(); }
+}
 
 export function ReportsCenter() {
   return (
@@ -98,7 +146,7 @@ export function ReportsCenter() {
               return (
                 <div key={r.name}>
                   <div style={{ display: 'flex', gap: 12, padding: '14px 18px', cursor: 'pointer', transition: 'background 0.15s' }}
-                    onClick={() => toast.success(`Descargando: ${r.name}`)}
+                    onClick={() => downloadReport(r.name)}
                     onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = C.tint}
                     onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'transparent'}>
                     <div style={{ width: 28, height: 28, flexShrink: 0, background: C.tint, border: `1px solid ${C.active}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>

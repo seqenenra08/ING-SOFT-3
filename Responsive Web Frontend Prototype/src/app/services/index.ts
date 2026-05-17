@@ -14,3 +14,6 @@ export { programsService } from './programsService';
 export type { Program } from './programsService';
 
 export { venuesService } from './venuesService';
+
+export { educatorsService } from './educatorsService';
+export type { Educator } from './educatorsService';

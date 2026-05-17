@@ -1,23 +1,37 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { Building2, Lock, User, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
+import { Building2, Lock, Mail, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { authService } from '../../../services/authService';
 import { C } from '../../../theme';
+
+const accentBar = `linear-gradient(90deg, ${C.primary}, ${C.active}, ${C.gold})`;
 
 export function BackofficeLogin() {
   const navigate = useNavigate();
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (credentials.username && credentials.password) {
-      setLoading(true);
-      toast.success('Acceso autorizado');
-      setTimeout(() => navigate('/escenarios/backoffice/dashboard'), 900);
-    } else {
-      toast.error('Ingresa usuario y contraseña');
+    if (!email || !password) { setError('Ingresa tu correo y contraseña'); return; }
+    setError('');
+    setLoading(true);
+    try {
+      const result = await authService.login({ email, password });
+      if (result.user.role !== 'administrador') {
+        setError('Esta cuenta no tiene acceso al backoffice. Solo administradores pueden ingresar.');
+        setLoading(false);
+        return;
+      }
+      toast.success(`Bienvenido, ${result.user.name}`);
+      setTimeout(() => navigate('/escenarios/backoffice/dashboard'), 600);
+    } catch {
+      setError('Correo o contraseña incorrectos.');
+      setLoading(false);
     }
   };
 
@@ -31,10 +45,11 @@ export function BackofficeLogin() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: C.dark, fontFamily: "'Inter', sans-serif" }}>
       {/* Accent left bar */}
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: `linear-gradient(180deg, ${C.primary}, ${C.active})` }} />
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: accentBar }} />
 
       {/* Left info panel */}
-      <div className="hidden lg:flex" style={{ width: '40%', flexShrink: 0, flexDirection: 'column', justifyContent: 'space-between', padding: '48px 48px', borderRight: `1px solid #2a1212` }}>
+      <div style={{ width: '40%', flexShrink: 0, flexDirection: 'column', justifyContent: 'space-between', padding: '48px 48px', borderRight: `1px solid #2a1212`, display: 'flex' }}
+        className="hidden lg:flex">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 30, height: 30, background: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>
             <Building2 style={{ width: 13, height: 13, color: '#fff' }} />
@@ -66,32 +81,36 @@ export function BackofficeLogin() {
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         >
           {/* Top accent */}
-          <div style={{ height: 3, background: `linear-gradient(90deg, ${C.primary}, ${C.active}, ${C.gold})`, marginBottom: 28 }} />
+          <div style={{ height: 3, background: accentBar, marginBottom: 28 }} />
 
           {/* Mobile brand */}
           <div className="lg:hidden" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
             <div style={{ width: 28, height: 28, background: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>
               <Building2 style={{ width: 12, height: 12, color: '#fff' }} />
             </div>
-            <div>
-              <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.82rem', color: '#f5f0ef' }}>Sistema de Gestión de Escenarios</p>
-            </div>
+            <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.82rem', color: '#f5f0ef' }}>Sistema de Gestión de Escenarios</p>
           </div>
 
           <p style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: C.active, marginBottom: 8 }}>Acceso Interno</p>
           <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '1.5rem', fontWeight: 700, color: '#fff', marginBottom: 6 }}>Iniciar Sesión</h1>
           <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', marginBottom: 28 }}>Secretaría de Cultura · Backoffice</p>
 
+          {error && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', background: `${C.active}18`, border: `1px solid ${C.active}44`, borderRadius: 2 }}>
+              <p style={{ fontSize: '0.75rem', color: C.active }}>{error}</p>
+            </div>
+          )}
+
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>
-                Usuario
+                Correo electrónico
               </label>
               <div style={{ position: 'relative' }}>
-                <User style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: 'rgba(255,255,255,0.2)' }} />
-                <input type="text" value={credentials.username}
-                  onChange={e => setCredentials({ ...credentials, username: e.target.value })}
-                  placeholder="Ingresa tu usuario" style={inputStyle}
+                <Mail style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: 'rgba(255,255,255,0.2)' }} />
+                <input type="email" value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="correo@pereira.gov.co" style={inputStyle}
                   onFocus={e => e.target.style.borderColor = `${C.primary}99`}
                   onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.09)'}
                 />
@@ -103,8 +122,8 @@ export function BackofficeLogin() {
               </label>
               <div style={{ position: 'relative' }}>
                 <Lock style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: 'rgba(255,255,255,0.2)' }} />
-                <input type="password" value={credentials.password}
-                  onChange={e => setCredentials({ ...credentials, password: e.target.value })}
+                <input type="password" value={password}
+                  onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••" style={inputStyle}
                   onFocus={e => e.target.style.borderColor = `${C.primary}99`}
                   onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.09)'}
@@ -125,7 +144,7 @@ export function BackofficeLogin() {
           </form>
 
           <p style={{ textAlign: 'center', fontSize: '0.68rem', color: 'rgba(255,255,255,0.15)', marginTop: 20 }}>
-            Acepta cualquier usuario y contraseña (modo demo)
+            Solo cuentas con rol de administrador pueden acceder.
           </p>
         </motion.div>
       </div>
