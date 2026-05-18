@@ -25,6 +25,13 @@ export interface RegisterPayload {
   email: string;
   password: string;
   role?: UserRole;
+  // Datos opcionales para crear perfil de estudiante
+  documento?: string;
+  telefono?: string;
+  direccion?: string;
+  fechaNacimiento?: string;
+  acudiente?: string;
+  telefonoAcudiente?: string;
 }
 
 export interface AuthResponse {
@@ -104,20 +111,60 @@ async function supabaseLogin(email: string, password: string): Promise<AuthRespo
 }
 
 async function supabaseRegister(payload: RegisterPayload): Promise<AuthResponse> {
-  const { data, error } = await supabase!.auth.signUp({
-    email: payload.email,
-    password: payload.password,
-    options: { data: { name: payload.name, role: payload.role ?? 'estudiante' } },
-  });
-  if (error) throw new Error(error.message);
+  const role: UserRole = payload.role ?? 'estudiante';
+
+  // 1. Validar que el correo no exista ya en la tabla custom users
+  const { data: existing } = await supabase!
+    .from('users')
+    .select('id')
+    .eq('email', payload.email)
+    .maybeSingle();
+  if (existing) {
+    throw new Error('Ya existe una cuenta con ese correo electrónico');
+  }
+
+  // 2. Insertar usuario en la tabla custom con hash sha256
+  const passwordHash = await sha256(payload.password);
+  const { data: created, error: userErr } = await supabase!
+    .from('users')
+    .insert([{
+      email:         payload.email,
+      name:          payload.name,
+      role,
+      password_hash: passwordHash,
+    }])
+    .select('id, name, email, role')
+    .single();
+  if (userErr || !created) throw new Error(userErr?.message ?? 'Error al crear la cuenta');
+
+  // 3. Si es estudiante y vienen datos del perfil, crear fila en students
+  if (role === 'estudiante') {
+    const { error: studentErr } = await supabase!
+      .from('students')
+      .insert([{
+        user_id:            created.id,
+        documento:          payload.documento || `TEMP-${created.id.slice(0, 8)}`,
+        telefono:           payload.telefono          || null,
+        direccion:          payload.direccion         || null,
+        fecha_nacimiento:   payload.fechaNacimiento   || null,
+        acudiente:          payload.acudiente         || null,
+        telefono_acudiente: payload.telefonoAcudiente || null,
+        estado:             'Activo',
+      }]);
+    if (studentErr) {
+      // Rollback: borrar el usuario recién creado para no dejar huérfano
+      await supabase!.from('users').delete().eq('id', created.id);
+      throw new Error(studentErr.message);
+    }
+  }
 
   const user: AuthUser = {
-    id:    data.user!.id,
-    name:  payload.name,
-    email: payload.email,
-    role:  payload.role ?? 'estudiante',
+    id:    created.id,
+    name:  created.name ?? payload.name,
+    email: created.email ?? payload.email,
+    role:  (created.role as UserRole) ?? role,
   };
-  const token = data.session?.access_token ?? `sb_token_${user.id}`;
+  const token = `prototype_token_${user.id}`;
   setToken(token);
   return { token, user };
 }

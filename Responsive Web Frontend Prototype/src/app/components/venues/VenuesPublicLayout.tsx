@@ -21,7 +21,7 @@ export function VenuesPublicLayout() {
 
       {/* Sticky header */}
       <header style={{ background: C.dark, borderBottom: `1px solid #2a1212`, position: 'sticky', top: 0, zIndex: 50, flexShrink: 0 }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 32px', height: 56, display: 'flex', alignItems: 'center', gap: 24 }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 16px', minHeight: 56, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
 
           {/* Brand */}
           <Link to="/escenarios" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
@@ -41,7 +41,9 @@ export function VenuesPublicLayout() {
           {/* Nav links */}
           <nav style={{ display: 'flex', alignItems: 'center', height: '100%', flex: 1, gap: 0 }}>
             {navLinks.map(link => {
-              const isActive = location.pathname === link.to;
+              const isActive = link.to === '/escenarios'
+                ? location.pathname === '/escenarios' || location.pathname === '/escenarios/'
+                : location.pathname === link.to || location.pathname.startsWith(link.to + '/') || (link.to === '/escenarios/catalogo' && location.pathname.startsWith('/escenarios/detalle')) || (link.to === '/escenarios/catalogo' && location.pathname.startsWith('/escenarios/solicitar'));
               return (
                 <Link key={link.to} to={link.to} style={{ height: '100%', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
                   <div style={{

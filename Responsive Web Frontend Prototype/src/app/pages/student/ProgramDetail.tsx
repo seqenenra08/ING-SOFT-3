@@ -18,8 +18,11 @@ export const ProgramDetail = () => {
 
   useEffect(() => {
     if (!id) return;
-    programsService.getById(id).then(setProgram).catch(() => toast.error('No se pudo cargar el programa'));
-    setLoading(false);
+    setLoading(true);
+    programsService.getById(id)
+      .then(setProgram)
+      .catch(() => toast.error('No se pudo cargar el programa'))
+      .finally(() => setLoading(false));
   }, [id]);
 
   useEffect(() => {

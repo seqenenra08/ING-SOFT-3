@@ -32,6 +32,21 @@ export const ManageEducators = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const closeModal = () => {
+    if (saving) return;
+    setShowModal(false);
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+  };
+
+  useEffect(() => {
+    if (!showModal) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !saving) closeModal(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showModal, saving]);
+
   const filtered = educators.filter(e => {
     const fullName = `${e.nombre ?? ''} ${e.apellido ?? ''}`.toLowerCase();
     const q = search.toLowerCase();
@@ -209,6 +224,7 @@ export const ManageEducators = () => {
                     </div>
                     <div style={{ width: 110, display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
                       <button onClick={ev => openEdit(e, ev)}
+                        aria-label={`Editar educador ${e.nombre} ${e.apellido}`} title="Editar"
                         style={{ padding: '4px 6px', background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, cursor: 'pointer', borderRadius: 2, display: 'flex', alignItems: 'center' }}>
                         <Edit2 style={{ width: 11, height: 11 }} />
                       </button>
@@ -319,7 +335,8 @@ export const ManageEducators = () => {
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-            onClick={() => setShowModal(false)}
+            onClick={closeModal}
+            role="dialog" aria-modal="true" aria-label={editingId ? 'Editar educador' : 'Nuevo educador'}
           >
             <motion.div
               initial={{ scale: 0.95, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 16 }}
@@ -333,23 +350,26 @@ export const ManageEducators = () => {
                     {editingId ? 'EDITAR EDUCADOR' : 'NUEVO EDUCADOR'}
                   </span>
                 </div>
-                <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                <button onClick={closeModal} aria-label="Cerrar" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                   <X style={{ width: 16, height: 16, color: C.subtle }} />
                 </button>
               </div>
 
               <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[
-                  { key: 'nombre',      label: 'Nombre *',              placeholder: 'Ej: Diana' },
-                  { key: 'apellido',    label: 'Apellido *',            placeholder: 'Ej: Vargas' },
-                  { key: 'email',       label: 'Correo electrónico *',  placeholder: 'correo@lucytejada.edu.co' },
-                  { key: 'especialidad',label: 'Especialidad',          placeholder: 'Ej: Danza Clásica' },
-                  { key: 'telefono',    label: 'Teléfono',              placeholder: '318 000 0000' },
-                ].map(f => (
+                  { key: 'nombre',      label: 'Nombre *',              placeholder: 'Ej: Diana',                       type: 'text' },
+                  { key: 'apellido',    label: 'Apellido *',            placeholder: 'Ej: Vargas',                      type: 'text' },
+                  { key: 'email',       label: 'Correo electrónico *',  placeholder: 'correo@lucytejada.edu.co',        type: 'email' },
+                  { key: 'especialidad',label: 'Especialidad',          placeholder: 'Ej: Danza Clásica',               type: 'text' },
+                  { key: 'telefono',    label: 'Teléfono',              placeholder: '318 000 0000',                    type: 'tel', inputMode: 'tel' as const },
+                ].map((f, idx) => (
                   <div key={f.key}>
-                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>{f.label}</label>
+                    <label htmlFor={`educator-${f.key}`} style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>{f.label}</label>
                     <input
-                      type="text"
+                      id={`educator-${f.key}`}
+                      autoFocus={idx === 0}
+                      type={f.type}
+                      inputMode={(f as any).inputMode}
                       value={(form as any)[f.key]}
                       onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                       placeholder={f.placeholder}
@@ -382,7 +402,7 @@ export const ManageEducators = () => {
                 )}
 
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <button onClick={() => setShowModal(false)}
+                  <button onClick={closeModal}
                     style={{ flex: 1, padding: '9px', background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, fontSize: '0.82rem', cursor: 'pointer', borderRadius: 2 }}>
                     Cancelar
                   </button>

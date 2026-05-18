@@ -84,6 +84,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email: data.email,
       password: data.password,
       role: 'estudiante',
+      documento:         data.documento,
+      telefono:          data.telefono,
+      direccion:         data.direccion,
+      fechaNacimiento:   data.fechaNacimiento,
+      acudiente:         data.acudiente,
+      telefonoAcudiente: data.telefonoAcudiente,
     });
     const u: User = {
       id:     result.user.id,

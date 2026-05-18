@@ -135,7 +135,11 @@ export const Attendance = () => {
                         <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 600, color: C.text, fontSize: '0.85rem' }}>{s.name}</p>
                       </div>
                       <div style={{ width: 80, display: 'flex', justifyContent: 'center' }}>
-                        <button onClick={() => toggle(s.id)} style={{
+                        <button onClick={() => toggle(s.id)}
+                          aria-pressed={present}
+                          aria-label={present ? `Marcar ausente a ${s.name}` : `Marcar presente a ${s.name}`}
+                          title={present ? 'Presente · clic para marcar ausente' : 'Ausente · clic para marcar presente'}
+                          style={{
                           width: 36, height: 36, background: present ? C.primary : C.surfaceAlt,
                           border: `1.5px solid ${present ? C.primary : C.border}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',

@@ -4,7 +4,7 @@ import { Calendar, MapPin, Clock, Search, Filter, CheckCircle2, PlayCircle, XCir
 import { toast } from 'sonner';
 import { C } from '../../../theme';
 import { venuesService } from '../../../services/venuesService';
-import type { Event } from '../../../data/venuesData';
+import type { Event, Venue } from '../../../data/venuesData';
 
 type EventStatus = 'programado' | 'en_curso' | 'finalizado' | 'cancelado';
 
@@ -15,10 +15,11 @@ const statusCfg: Record<EventStatus, { label: string; color: string; bg: string;
   cancelado:  { label: 'Cancelado',  color: C.active,  bg: `${C.active}15`,  icon: XCircle      },
 };
 
-const EMPTY_FORM = { venueName: '', eventName: '', eventDate: '', startTime: '08:00', endTime: '18:00', status: 'programado' };
+const EMPTY_FORM = { venueId: '', venueName: '', eventName: '', eventDate: '', startTime: '08:00', endTime: '18:00', status: 'programado' };
 
 export function EventsManagement() {
   const [events, setEvents]         = useState<Event[]>([]);
+  const [venues, setVenues]         = useState<Venue[]>([]);
   const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState('');
   const [filter, setFilter]         = useState<EventStatus | 'all'>('all');
@@ -29,9 +30,12 @@ export function EventsManagement() {
   const [saving, setSaving]         = useState(false);
 
   useEffect(() => {
-    venuesService.getEvents()
-      .then(setEvents)
-      .catch(() => toast.error('Error al cargar eventos'))
+    Promise.all([
+      venuesService.getEvents(),
+      venuesService.getVenues(),
+    ])
+      .then(([e, v]) => { setEvents(e); setVenues(v); })
+      .catch(() => toast.error('Error al cargar datos'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -59,7 +63,8 @@ export function EventsManagement() {
   const openCreate = () => { setForm(EMPTY_FORM); setModal('create'); };
 
   const handleCreate = async () => {
-    if (!form.eventName || !form.venueName) { toast.error('Nombre del evento y escenario son obligatorios'); return; }
+    if (!form.eventName) { toast.error('Nombre del evento es obligatorio'); return; }
+    if (!form.venueId)   { toast.error('Selecciona un escenario'); return; }
     setSaving(true);
     try {
       const created = await venuesService.createEvent({
@@ -379,9 +384,23 @@ export function EventsManagement() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>Escenario *</label>
-                  <input value={form.venueName} onChange={e => setForm(p => ({ ...p, venueName: e.target.value }))}
-                    placeholder="Nombre del escenario" style={inputStyle}
-                    onFocus={e => e.target.style.borderColor = C.primary} onBlur={e => e.target.style.borderColor = C.border} />
+                  {venues.length === 0 ? (
+                    <div style={{ padding: '9px 12px', background: C.surfaceAlt, border: `1px solid ${C.border}`, fontSize: '0.78rem', color: C.subtle, borderRadius: 2 }}>
+                      No hay escenarios registrados. Crea uno en "Gestión de Escenarios" primero.
+                    </div>
+                  ) : (
+                    <select
+                      value={form.venueId}
+                      onChange={e => {
+                        const v = venues.find(v => v.id === e.target.value);
+                        setForm(p => ({ ...p, venueId: e.target.value, venueName: v?.name ?? '' }));
+                      }}
+                      style={{ ...inputStyle, cursor: 'pointer' }}
+                    >
+                      <option value="">— Selecciona un escenario —</option>
+                      {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>Fecha del evento</label>

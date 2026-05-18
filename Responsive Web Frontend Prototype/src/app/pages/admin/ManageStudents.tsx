@@ -36,6 +36,21 @@ export const ManageStudents = () => {
       .finally(() => setLoadingPrograms(false));
   }, [selected?.id]);
 
+  const closeModal = () => {
+    if (saving) return;
+    setShowModal(false);
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+  };
+
+  useEffect(() => {
+    if (!showModal) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !saving) closeModal(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showModal, saving]);
+
   const filtered = students.filter(s => {
     const q = search.toLowerCase();
     const name = `${s.nombre ?? ''} ${s.apellido ?? ''}`.toLowerCase();
@@ -192,6 +207,7 @@ export const ManageStudents = () => {
                   </div>
                   <div style={{ width: 70, display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
                     <button onClick={ev => openEdit(s, ev)}
+                      aria-label={`Editar estudiante ${s.nombre} ${s.apellido}`} title="Editar"
                       style={{ padding: '4px 6px', background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, cursor: 'pointer', borderRadius: 2, display: 'flex', alignItems: 'center' }}>
                       <Edit2 style={{ width: 11, height: 11 }} />
                     </button>
@@ -216,7 +232,7 @@ export const ManageStudents = () => {
                     <div style={{ width: 3, height: 14, background: C.active, borderRadius: 2 }} />
                     <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.78rem', color: C.text }}>DETALLE DEL ESTUDIANTE</span>
                   </div>
-                  <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                  <button onClick={() => setSelected(null)} aria-label="Cerrar detalle" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
                     <X style={{ width: 14, height: 14, color: C.subtle }} />
                   </button>
                 </div>
@@ -307,7 +323,8 @@ export const ManageStudents = () => {
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-            onClick={() => setShowModal(false)}
+            onClick={closeModal}
+            role="dialog" aria-modal="true" aria-label={editingId ? 'Editar estudiante' : 'Nuevo estudiante'}
           >
             <motion.div
               initial={{ scale: 0.95, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 16 }}
@@ -321,27 +338,31 @@ export const ManageStudents = () => {
                     {editingId ? 'EDITAR ESTUDIANTE' : 'NUEVO ESTUDIANTE'}
                   </span>
                 </div>
-                <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                <button onClick={closeModal} aria-label="Cerrar" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                   <X style={{ width: 16, height: 16, color: C.subtle }} />
                 </button>
               </div>
 
               <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[
-                  { key: 'nombre',     label: 'Nombre *',              placeholder: 'Ej: Camila' },
-                  { key: 'apellido',   label: 'Apellido *',            placeholder: 'Ej: Rodríguez' },
-                  { key: 'email',      label: 'Correo electrónico *',  placeholder: 'correo@email.com' },
-                  { key: 'documento',  label: 'Documento',             placeholder: 'Número de documento' },
-                  { key: 'telefono',   label: 'Teléfono',              placeholder: '300 000 0000' },
-                  { key: 'direccion',  label: 'Dirección',             placeholder: 'Calle 10 #5-20, Pereira' },
-                  { key: 'fechaNacimiento', label: 'Fecha de nacimiento', placeholder: '' },
-                  { key: 'acudiente', label: 'Acudiente',              placeholder: 'Nombre del acudiente' },
-                  { key: 'telefonoAcudiente', label: 'Teléfono acudiente', placeholder: '300 000 0000' },
-                ].map(f => (
+                  { key: 'nombre',     label: 'Nombre *',              placeholder: 'Ej: Camila',                 type: 'text' },
+                  { key: 'apellido',   label: 'Apellido *',            placeholder: 'Ej: Rodríguez',              type: 'text' },
+                  { key: 'email',      label: 'Correo electrónico *',  placeholder: 'correo@email.com',           type: 'email' },
+                  { key: 'documento',  label: 'Documento',             placeholder: 'Número de documento',        type: 'text', inputMode: 'numeric' as const },
+                  { key: 'telefono',   label: 'Teléfono',              placeholder: '300 000 0000',               type: 'tel',  inputMode: 'tel' as const },
+                  { key: 'direccion',  label: 'Dirección',             placeholder: 'Calle 10 #5-20, Pereira',    type: 'text' },
+                  { key: 'fechaNacimiento', label: 'Fecha de nacimiento', placeholder: '',                        type: 'date' },
+                  { key: 'acudiente', label: 'Acudiente',              placeholder: 'Nombre del acudiente',       type: 'text' },
+                  { key: 'telefonoAcudiente', label: 'Teléfono acudiente', placeholder: '300 000 0000',           type: 'tel',  inputMode: 'tel' as const },
+                ].map((f, idx) => (
                   <div key={f.key}>
-                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>{f.label}</label>
+                    <label htmlFor={`student-${f.key}`} style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>{f.label}</label>
                     <input
-                      type={f.key === 'fechaNacimiento' ? 'date' : 'text'}
+                      id={`student-${f.key}`}
+                      autoFocus={idx === 0}
+                      type={f.type}
+                      inputMode={(f as any).inputMode}
+                      max={f.key === 'fechaNacimiento' ? new Date().toISOString().slice(0,10) : undefined}
                       value={(form as any)[f.key]}
                       onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                       placeholder={f.placeholder}
@@ -353,7 +374,7 @@ export const ManageStudents = () => {
                 ))}
 
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <button onClick={() => setShowModal(false)}
+                  <button onClick={closeModal}
                     style={{ flex: 1, padding: '9px', background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, fontSize: '0.82rem', cursor: 'pointer', borderRadius: 2 }}>
                     Cancelar
                   </button>

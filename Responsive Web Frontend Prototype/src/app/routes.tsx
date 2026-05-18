@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router';
+import { createBrowserRouter, Link, Navigate } from 'react-router';
 import { useAuth } from './context/AuthContext';
 
 // Layouts
@@ -17,6 +17,7 @@ import { ProgramsCatalog } from './pages/student/ProgramsCatalog';
 import { ProgramDetail } from './pages/student/ProgramDetail';
 import { MyPrograms } from './pages/student/MyPrograms';
 import { AcademicProgress } from './pages/student/AcademicProgress';
+import { MyEvaluations } from './pages/student/MyEvaluations';
 import { Notifications } from './pages/student/Notifications';
 import { Profile } from './pages/student/Profile';
 
@@ -60,11 +61,11 @@ import { BackofficeLayout } from './components/venues/BackofficeLayout';
 import { VenuesPublicLayout } from './components/venues/VenuesPublicLayout';
 
 // Protected Route Component
-const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) => {
+const ProtectedRoute = ({ children, allowedRoles, redirectTo = '/login' }: { children: React.ReactNode; allowedRoles?: string[]; redirectTo?: string }) => {
   const { user, isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={redirectTo} replace />;
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role || '')) {
@@ -125,6 +126,10 @@ export const router = createBrowserRouter([
       {
         path: 'progreso',
         element: <AcademicProgress />
+      },
+      {
+        path: 'notas',
+        element: <MyEvaluations />
       },
       {
         path: 'notificaciones',
@@ -245,7 +250,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/escenarios/backoffice',
-    element: <BackofficeLayout />,
+    element: (
+      <ProtectedRoute allowedRoles={['administrador']} redirectTo="/escenarios/backoffice/login">
+        <BackofficeLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         path: 'dashboard',
@@ -294,7 +303,7 @@ export const router = createBrowserRouter([
         <div className="text-center">
           <h1 className="mb-4 text-4xl font-bold text-gray-900">404</h1>
           <p className="mb-4 text-gray-600">Página no encontrada</p>
-          <a href="/" className="text-blue-600 hover:text-blue-700">Volver al inicio</a>
+          <Link to="/" className="text-blue-600 hover:text-blue-700">Volver al inicio</Link>
         </div>
       </div>
     )

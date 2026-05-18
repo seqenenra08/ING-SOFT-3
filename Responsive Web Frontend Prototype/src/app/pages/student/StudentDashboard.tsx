@@ -148,11 +148,11 @@ export const StudentDashboard = () => {
       <div style={{
         maxWidth: 1280, margin: '0 auto',
         padding: '28px 32px',
-        display: 'flex', gap: 24, alignItems: 'flex-start',
+        display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap',
       }}>
 
         {/* ── LEFT MAIN COLUMN ─────────────────────────────────── */}
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ flex: '1 1 480px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* ── PROGRAMAS ────────────────────────────────────── */}
           <motion.div
@@ -196,6 +196,7 @@ export const StudentDashboard = () => {
             ) : (
               enrolledPrograms.map((p, i) => (
                 <div key={p.id ?? i}>
+                  <Link to={`/estudiante/programa/${p.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -234,6 +235,7 @@ export const StudentDashboard = () => {
                     </div>
                     <ChevronRight style={{ width: 15, height: 15, color: C.border, flexShrink: 0, alignSelf: 'center' }} />
                   </motion.div>
+                  </Link>
                   {i < enrolledPrograms.length - 1 && <Divider />}
                 </div>
               ))
@@ -269,7 +271,7 @@ export const StudentDashboard = () => {
         </div>
 
         {/* ── RIGHT SIDEBAR ────────────────────────────────────── */}
-        <div style={{ width: 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ flex: '0 1 320px', minWidth: 260, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* ── ACCIONES RÁPIDAS ──────────────────────────────── */}
           <motion.div

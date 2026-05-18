@@ -4,7 +4,7 @@ import { Search, FileText, Download, Plus, X, Save, Pencil, Trash2 } from 'lucid
 import { toast } from 'sonner';
 import { C } from '../../../theme';
 import { venuesService } from '../../../services/venuesService';
-import type { Contract } from '../../../data/venuesData';
+import type { Contract, Venue } from '../../../data/venuesData';
 
 const statusStyle: Record<string, { label: string; color: string }> = {
   activo:           { label: 'Vigente',       color: '#4b7a30' },
@@ -19,7 +19,7 @@ const statusStyle: Record<string, { label: string; color: string }> = {
 const STATUSES = ['borrador', 'enviado_firma', 'firmado', 'activo', 'finalizado', 'cancelado'];
 
 const EMPTY_FORM = {
-  clientName: '', clientDocument: '', venueName: '',
+  clientName: '', clientDocument: '', venueId: '', venueName: '',
   startDate: '', endDate: '', totalAmount: '', status: 'borrador',
 };
 
@@ -53,6 +53,7 @@ function downloadContractPDF(contract: Contract) {
 
 export function ContractsManagement() {
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [venues, setVenues]       = useState<Venue[]>([]);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState('');
   const [selected, setSelected]   = useState<Contract | null>(null);
@@ -62,9 +63,12 @@ export function ContractsManagement() {
   const [saving, setSaving]       = useState(false);
 
   useEffect(() => {
-    venuesService.getContracts()
-      .then(setContracts)
-      .catch(() => toast.error('Error al cargar contratos'))
+    Promise.all([
+      venuesService.getContracts(),
+      venuesService.getVenues(),
+    ])
+      .then(([c, v]) => { setContracts(c); setVenues(v); })
+      .catch(() => toast.error('Error al cargar datos'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -83,9 +87,12 @@ export function ContractsManagement() {
   const openEdit = (c: Contract, ev: React.MouseEvent) => {
     ev.stopPropagation();
     setEditingId(c.id);
+    // Resolver venueId emparejando por nombre con la lista cargada
+    const matched = venues.find(v => v.name === c.venueName);
     setForm({
       clientName:    c.clientName    ?? '',
       clientDocument:c.clientDocument ?? '',
+      venueId:       matched?.id     ?? '',
       venueName:     c.venueName    ?? '',
       startDate:     c.startDate    ?? '',
       endDate:       c.endDate      ?? '',
@@ -96,21 +103,20 @@ export function ContractsManagement() {
   };
 
   const handleSave = async () => {
-    if (!form.clientName || !form.venueName) {
-      toast.error('Cliente y escenario son obligatorios');
-      return;
-    }
+    if (!form.clientName) { toast.error('Cliente es obligatorio'); return; }
+    if (!form.venueId)    { toast.error('Selecciona un escenario'); return; }
     setSaving(true);
     try {
       const payload = {
         clientName:     form.clientName,
         clientDocument: form.clientDocument,
+        venueId:        form.venueId,
         venueName:      form.venueName,
         startDate:      form.startDate || undefined,
         endDate:        form.endDate   || undefined,
         totalAmount:    Number(form.totalAmount) || 0,
         status:         form.status as Contract['status'],
-      };
+      } as Partial<Contract> & { venueId: string };
       if (modal === 'create') {
         const created = await venuesService.createContract(payload);
         setContracts(prev => [created, ...prev]);
@@ -350,9 +356,23 @@ export function ContractsManagement() {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>Escenario *</label>
-                  <input value={form.venueName} onChange={e => setForm(p => ({ ...p, venueName: e.target.value }))}
-                    placeholder="Nombre del escenario" style={inputStyle}
-                    onFocus={e => e.target.style.borderColor = C.primary} onBlur={e => e.target.style.borderColor = C.border} />
+                  {venues.length === 0 ? (
+                    <div style={{ padding: '9px 12px', background: C.surfaceAlt, border: `1px solid ${C.border}`, fontSize: '0.78rem', color: C.subtle, borderRadius: 2 }}>
+                      No hay escenarios registrados. Crea uno en "Gestión de Escenarios" primero.
+                    </div>
+                  ) : (
+                    <select
+                      value={form.venueId}
+                      onChange={e => {
+                        const v = venues.find(v => v.id === e.target.value);
+                        setForm(p => ({ ...p, venueId: e.target.value, venueName: v?.name ?? '' }));
+                      }}
+                      style={{ ...inputStyle, cursor: 'pointer' }}
+                    >
+                      <option value="">— Selecciona un escenario —</option>
+                      {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    </select>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', gap: 12 }}>

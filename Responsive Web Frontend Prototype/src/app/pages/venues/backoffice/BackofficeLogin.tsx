@@ -1,17 +1,19 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { Building2, Lock, Mail, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
+import { Building2, Lock, Mail, ArrowRight, Loader2, ShieldCheck, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import { authService } from '../../../services/authService';
+import { useAuth } from '../../../context/AuthContext';
 import { C } from '../../../theme';
 
 const accentBar = `linear-gradient(90deg, ${C.primary}, ${C.active}, ${C.gold})`;
 
 export function BackofficeLogin() {
   const navigate = useNavigate();
+  const { login, logout } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,14 +23,16 @@ export function BackofficeLogin() {
     setError('');
     setLoading(true);
     try {
-      const result = await authService.login({ email, password });
-      if (result.user.role !== 'administrador') {
+      const role = await login(email, password);
+      if (role !== 'administrador') {
+        // Login funcionó pero el rol no es válido para el backoffice: revertimos
+        logout();
         setError('Esta cuenta no tiene acceso al backoffice. Solo administradores pueden ingresar.');
         setLoading(false);
         return;
       }
-      toast.success(`Bienvenido, ${result.user.name}`);
-      setTimeout(() => navigate('/escenarios/backoffice/dashboard'), 600);
+      toast.success('Bienvenido');
+      navigate('/escenarios/backoffice/dashboard');
     } catch {
       setError('Correo o contraseña incorrectos.');
       setLoading(false);
@@ -50,14 +54,22 @@ export function BackofficeLogin() {
       {/* Left info panel */}
       <div style={{ width: '40%', flexShrink: 0, flexDirection: 'column', justifyContent: 'space-between', padding: '48px 48px', borderRight: `1px solid #2a1212`, display: 'flex' }}
         className="hidden lg:flex">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 30, height: 30, background: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>
-            <Building2 style={{ width: 13, height: 13, color: '#fff' }} />
-          </div>
-          <div>
-            <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.82rem', color: '#f5f0ef' }}>Sistema de Gestión</p>
-            <p style={{ fontSize: '0.58rem', color: '#5a3030', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Escenarios Culturales</p>
-          </div>
+        <div>
+          <Link to="/escenarios" style={{ display: 'inline-flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
+            <div style={{ width: 30, height: 30, background: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>
+              <Building2 style={{ width: 13, height: 13, color: '#fff' }} />
+            </div>
+            <div>
+              <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.82rem', color: '#f5f0ef' }}>Sistema de Gestión</p>
+              <p style={{ fontSize: '0.58rem', color: '#5a3030', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Escenarios Culturales</p>
+            </div>
+          </Link>
+          <Link to="/escenarios"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textDecoration: 'none', marginTop: 16, transition: 'color 0.15s' }}
+            onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#f5f0ef'}
+            onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.4)'}>
+            <ArrowLeft style={{ width: 12, height: 12 }} /> Volver al portal público
+          </Link>
         </div>
         <div>
           <p style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: C.active, marginBottom: 16 }}>Acceso Institucional</p>
@@ -84,12 +96,22 @@ export function BackofficeLogin() {
           <div style={{ height: 3, background: accentBar, marginBottom: 28 }} />
 
           {/* Mobile brand */}
-          <div className="lg:hidden" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-            <div style={{ width: 28, height: 28, background: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>
-              <Building2 style={{ width: 12, height: 12, color: '#fff' }} />
-            </div>
-            <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.82rem', color: '#f5f0ef' }}>Sistema de Gestión de Escenarios</p>
+          <div className="lg:hidden" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 24 }}>
+            <Link to="/escenarios" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+              <div style={{ width: 28, height: 28, background: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2 }}>
+                <Building2 style={{ width: 12, height: 12, color: '#fff' }} />
+              </div>
+              <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.82rem', color: '#f5f0ef' }}>Sistema de Gestión de Escenarios</p>
+            </Link>
           </div>
+
+          {/* Back link (always visible above title) */}
+          <Link to="/escenarios"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textDecoration: 'none', marginBottom: 16, transition: 'color 0.15s' }}
+            onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#f5f0ef'}
+            onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.4)'}>
+            <ArrowLeft style={{ width: 12, height: 12 }} /> Volver al portal público
+          </Link>
 
           <p style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: C.active, marginBottom: 8 }}>Acceso Interno</p>
           <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '1.5rem', fontWeight: 700, color: '#fff', marginBottom: 6 }}>Iniciar Sesión</h1>
@@ -122,12 +144,17 @@ export function BackofficeLogin() {
               </label>
               <div style={{ position: 'relative' }}>
                 <Lock style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: 'rgba(255,255,255,0.2)' }} />
-                <input type="password" value={password}
+                <input type={showPass ? 'text' : 'password'} value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••" style={inputStyle}
+                  placeholder="••••••••" style={{ ...inputStyle, paddingRight: 40 }}
                   onFocus={e => e.target.style.borderColor = `${C.primary}99`}
                   onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.09)'}
                 />
+                <button type="button" onClick={() => setShowPass(v => !v)}
+                  aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4, display: 'flex', alignItems: 'center' }}>
+                  {showPass ? <EyeOff style={{ width: 14, height: 14 }} /> : <Eye style={{ width: 14, height: 14 }} />}
+                </button>
               </div>
             </div>
             <button type="submit" disabled={loading} style={{

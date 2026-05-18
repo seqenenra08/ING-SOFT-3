@@ -4,7 +4,7 @@ import { Search, DollarSign, CheckCircle, Clock, AlertTriangle, Plus, X, Save } 
 import { toast } from 'sonner';
 import { C } from '../../../theme';
 import { venuesService } from '../../../services/venuesService';
-import type { Payment } from '../../../data/venuesData';
+import type { Payment, Contract } from '../../../data/venuesData';
 
 const statusStyle: Record<string, { label: string; color: string; icon: any }> = {
   completado: { label: 'Completado', color: '#4b7a30', icon: CheckCircle   },
@@ -22,6 +22,7 @@ const EMPTY_FORM = {
 
 export function PaymentsManagement() {
   const [payments, setPayments]   = useState<Payment[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -29,9 +30,12 @@ export function PaymentsManagement() {
   const [saving, setSaving]       = useState(false);
 
   useEffect(() => {
-    venuesService.getPayments()
-      .then(setPayments)
-      .catch(() => toast.error('Error al cargar pagos'))
+    Promise.all([
+      venuesService.getPayments(),
+      venuesService.getContracts(),
+    ])
+      .then(([p, c]) => { setPayments(p); setContracts(c); })
+      .catch(() => toast.error('Error al cargar datos'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -45,12 +49,14 @@ export function PaymentsManagement() {
   const fmt = (n: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
 
   const handleSave = async () => {
-    if (!form.clientName || !form.amount) { toast.error('Cliente y monto son obligatorios'); return; }
+    if (!form.contractId)   { toast.error('Selecciona un contrato'); return; }
+    if (!form.amount)       { toast.error('Ingresa el monto'); return; }
+    if (Number(form.amount) <= 0) { toast.error('El monto debe ser mayor a 0'); return; }
     setSaving(true);
     try {
       const payload: any = {
-        contractId:    form.contractId || 'manual',
-        contractNumber:form.contractNumber || 'MANUAL',
+        contractId:    form.contractId,
+        contractNumber:form.contractNumber,
         clientName:    form.clientName,
         amount:        Number(form.amount),
         paymentMethod: form.paymentMethod,
@@ -196,9 +202,49 @@ export function PaymentsManagement() {
               </div>
               <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
+                {/* Contrato (selector) — autoocompleta cliente y número */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>Contrato *</label>
+                  {contracts.length === 0 ? (
+                    <div style={{ padding: '9px 12px', background: C.surfaceAlt, border: `1px solid ${C.border}`, fontSize: '0.78rem', color: C.subtle, borderRadius: 2 }}>
+                      No hay contratos registrados. Crea uno en "Gestión de Contratos" primero.
+                    </div>
+                  ) : (
+                    <select
+                      value={form.contractId}
+                      onChange={e => {
+                        const c = contracts.find(c => c.id === e.target.value);
+                        setForm(p => ({
+                          ...p,
+                          contractId:     e.target.value,
+                          contractNumber: c?.contractNumber ?? '',
+                          clientName:     c?.clientName ?? '',
+                        }));
+                      }}
+                      style={{ ...inputStyle, cursor: 'pointer' }}
+                    >
+                      <option value="">— Selecciona un contrato —</option>
+                      {contracts.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.contractNumber} · {c.clientName ?? 'Sin cliente'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {/* Cliente: solo lectura, viene del contrato */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>Cliente</label>
+                  <input
+                    value={form.clientName}
+                    readOnly
+                    placeholder="Se completa al seleccionar contrato"
+                    style={{ ...inputStyle, opacity: 0.85, cursor: 'not-allowed' }}
+                  />
+                </div>
+
                 {[
-                  { key: 'clientName',     label: 'Nombre del cliente *', placeholder: 'Nombre completo o razón social' },
-                  { key: 'contractNumber', label: 'N° Contrato',          placeholder: 'CTR-2026-XXX (opcional)' },
                   { key: 'amount',         label: 'Monto (COP) *',        placeholder: '2800000', type: 'number' },
                   { key: 'paymentDate',    label: 'Fecha de pago',        placeholder: '', type: 'date' },
                   { key: 'receiptNumber',  label: 'N° Recibo/Factura',    placeholder: 'REC-001' },

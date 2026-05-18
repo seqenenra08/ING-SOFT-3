@@ -35,6 +35,20 @@ export const ManagePrograms = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const closeModal = () => {
+    if (saving) return;
+    setModal(null);
+    setForm(EMPTY_FORM);
+  };
+
+  useEffect(() => {
+    if (!modal) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !saving) closeModal(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modal, saving]);
+
   const filtered = programs.filter(p =>
     p.name?.toLowerCase().includes(search.toLowerCase()) ||
     p.category?.toLowerCase().includes(search.toLowerCase()) ||
@@ -80,6 +94,7 @@ export const ManagePrograms = () => {
         toast.success('Programa actualizado');
       }
       setModal(null);
+      setForm(EMPTY_FORM);
     } catch (e: any) {
       toast.error(e.message ?? 'Error al guardar');
     } finally {
@@ -245,6 +260,7 @@ export const ManagePrograms = () => {
                       <Pencil style={{ width: 13, height: 13 }} /> Editar
                     </button>
                     <button onClick={e => handleDelete(selected, e)}
+                      aria-label="Eliminar programa" title="Eliminar"
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', background: 'transparent', color: C.active, fontWeight: 600, fontSize: '0.8rem', border: `1px solid ${C.active}55`, cursor: 'pointer', borderRadius: 2 }}>
                       <Trash2 style={{ width: 13, height: 13 }} />
                     </button>
@@ -262,7 +278,8 @@ export const ManagePrograms = () => {
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-            onClick={() => setModal(null)}
+            onClick={closeModal}
+            role="dialog" aria-modal="true" aria-label={modal === 'create' ? 'Nuevo programa' : 'Editar programa'}
           >
             <motion.div
               initial={{ scale: 0.95, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 16 }}
@@ -276,7 +293,7 @@ export const ManagePrograms = () => {
                     {modal === 'create' ? 'NUEVO PROGRAMA' : 'EDITAR PROGRAMA'}
                   </span>
                 </div>
-                <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                <button onClick={closeModal} aria-label="Cerrar" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                   <X style={{ width: 16, height: 16, color: C.subtle }} />
                 </button>
               </div>
@@ -345,10 +362,11 @@ export const ManagePrograms = () => {
                   </div>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>Capacidad</label>
-                    <input type="number" min={1} value={form.capacity ?? 15} onChange={e => setForm(p => ({ ...p, capacity: +e.target.value }))}
+                    <input type="number" inputMode="numeric" min={Math.max(1, (form.enrolled ?? 0))} value={form.capacity ?? 15} onChange={e => setForm(p => ({ ...p, capacity: +e.target.value }))}
                       style={{ width: '100%', padding: '9px 12px', background: C.surfaceAlt, border: `1px solid ${C.border}`, color: C.text, fontSize: '0.82rem', outline: 'none', borderRadius: 2, boxSizing: 'border-box' }}
                       onFocus={e => e.target.style.borderColor = C.primary} onBlur={e => e.target.style.borderColor = C.border}
                     />
+                    {(form.enrolled ?? 0) > 0 && <p style={{ fontSize: '0.65rem', color: C.subtle, marginTop: 3 }}>Mínimo: {form.enrolled} (inscritos actuales)</p>}
                   </div>
                 </div>
 
@@ -372,7 +390,7 @@ export const ManagePrograms = () => {
                   </div>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>Fecha fin</label>
-                    <input type="date" value={form.endDate ?? ''} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))}
+                    <input type="date" min={form.startDate || undefined} value={form.endDate ?? ''} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))}
                       style={{ width: '100%', padding: '9px 12px', background: C.surfaceAlt, border: `1px solid ${C.border}`, color: C.text, fontSize: '0.82rem', outline: 'none', borderRadius: 2, boxSizing: 'border-box' }}
                       onFocus={e => e.target.style.borderColor = C.primary} onBlur={e => e.target.style.borderColor = C.border}
                     />
@@ -380,7 +398,7 @@ export const ManagePrograms = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <button onClick={() => setModal(null)}
+                  <button onClick={closeModal}
                     style={{ flex: 1, padding: '9px', background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, fontSize: '0.82rem', cursor: 'pointer', borderRadius: 2 }}>
                     Cancelar
                   </button>

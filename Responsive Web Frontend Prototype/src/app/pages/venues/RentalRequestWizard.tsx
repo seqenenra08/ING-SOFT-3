@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
 import { venuesService } from '../../services/venuesService';
 import { toast } from 'sonner';
 import { C } from '../../theme';
@@ -49,7 +49,9 @@ export function RentalRequestWizard() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [venues, setVenues] = useState<any[]>([]);
+  const [venuesLoaded, setVenuesLoaded] = useState(false);
   const [step, setStep] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     eventName: '', eventType: '', attendees: '', startDate: '', endDate: '',
     startTime: '', endTime: '', description: '',
@@ -57,15 +59,53 @@ export function RentalRequestWizard() {
   });
 
   useEffect(() => {
-    venuesService.getVenues().then(setVenues);
+    venuesService.getVenues()
+      .then(setVenues)
+      .finally(() => setVenuesLoaded(true));
   }, []);
 
-  const venue: any = venues.find(v => v.id === id) ?? venues[0] ?? { name: '', location: '' };
+  const matchedVenue = venues.find(v => v.id === id);
+  const venue: any = matchedVenue ?? { name: '', location: '', id: '' };
+
+  useEffect(() => {
+    if (venuesLoaded && !matchedVenue) {
+      toast.error('Escenario no encontrado');
+      navigate('/escenarios/catalogo', { replace: true });
+    }
+  }, [venuesLoaded, matchedVenue, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
+  const validateStep = (s: number): string | null => {
+    if (s === 0) {
+      if (!form.eventName.trim()) return 'Ingresa el nombre del evento';
+      if (!form.eventType) return 'Selecciona el tipo de evento';
+      if (!form.startDate) return 'Indica la fecha de inicio';
+      if (form.endDate && form.endDate < form.startDate) return 'La fecha fin no puede ser anterior a la fecha inicio';
+      if (!form.attendees || parseInt(form.attendees) <= 0) return 'Indica un número válido de asistentes';
+    } else if (s === 1) {
+      if (!form.clientName.trim()) return 'Ingresa tu nombre completo';
+      if (!form.clientId.trim()) return 'Ingresa tu documento de identidad';
+      if (!form.clientEmail.trim()) return 'Ingresa tu correo electrónico';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.clientEmail)) return 'Correo electrónico no válido';
+      if (!form.clientPhone.trim()) return 'Ingresa un teléfono de contacto';
+    }
+    return null;
+  };
+
+  const handleNext = () => {
+    const err = validateStep(step);
+    if (err) { toast.error(err); return; }
+    setStep(step + 1);
+  };
+
   const handleSubmit = async () => {
+    if (submitting) return;
+    const err0 = validateStep(0);
+    const err1 = validateStep(1);
+    if (err0) { toast.error(err0); setStep(0); return; }
+    if (err1) { toast.error(err1); setStep(1); return; }
     const payload = {
       venueId:        venue.id,
       venueName:      venue.name,
@@ -83,12 +123,14 @@ export function RentalRequestWizard() {
       attendees:      parseInt(form.attendees) || 0,
       notes:          form.description,
     } as any;
+    setSubmitting(true);
     try {
       const result = await venuesService.createRequest(payload);
       toast.success(`Solicitud enviada. Número: ${result.requestNumber}`);
       setTimeout(() => navigate('/escenarios/seguimiento'), 1500);
     } catch (err: any) {
       toast.error(`Error: ${err?.message ?? 'Error al enviar la solicitud.'}`);
+      setSubmitting(false);
     }
   };
 
@@ -111,14 +153,19 @@ export function RentalRequestWizard() {
 
       {/* Step progress */}
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 40px', display: 'flex' }}>
-          {steps.map((s, i) => (
-            <div key={s} style={{ flex: 1, padding: '14px 0', textAlign: 'center', borderBottom: i === step ? `2px solid ${C.primary}` : '2px solid transparent' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: i <= step ? 700 : 400, color: i <= step ? C.primary : C.subtle }}>
-                {i + 1}. {s}
-              </span>
-            </div>
-          ))}
+        <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 40px' }}>
+          <p style={{ fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.subtle, padding: '10px 0 0' }}>
+            Paso {step + 1} de {steps.length}
+          </p>
+          <div style={{ display: 'flex' }}>
+            {steps.map((s, i) => (
+              <div key={s} style={{ flex: 1, padding: '10px 0 12px', textAlign: 'center', borderBottom: i === step ? `2px solid ${C.primary}` : '2px solid transparent' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: i <= step ? 700 : 400, color: i <= step ? C.primary : C.subtle }}>
+                  {i + 1}. {s}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -161,13 +208,26 @@ export function RentalRequestWizard() {
                     <Field {...f('startTime')} label="Hora inicio" type="time" />
                   </div>
                   <div style={{ flex: '1 1 160px' }}>
-                    <Field {...f('endDate')} label="Fecha fin" type="date" />
+                    <div>
+                      <label style={labelStyle}>Fecha fin</label>
+                      <input name="endDate" type="date" value={form.endDate} onChange={handleChange} min={form.startDate || undefined}
+                        style={inputStyle}
+                        onFocus={e => e.target.style.borderColor = C.primary}
+                        onBlur={e => e.target.style.borderColor = C.border}
+                      />
+                    </div>
                   </div>
                   <div style={{ flex: '1 1 120px' }}>
                     <Field {...f('endTime')} label="Hora fin" type="time" />
                   </div>
                   <div style={{ flex: '1 1 120px' }}>
-                    <Field {...f('attendees')} label="Asistentes" type="number" placeholder="100" />
+                    <label style={labelStyle}>Asistentes</label>
+                    <input name="attendees" type="number" min={1} inputMode="numeric"
+                      value={form.attendees} onChange={handleChange} placeholder="100"
+                      style={inputStyle}
+                      onFocus={e => e.target.style.borderColor = C.primary}
+                      onBlur={e => e.target.style.borderColor = C.border}
+                    />
                   </div>
                 </div>
                 <Field {...f('description')} label="Descripción del evento" type="textarea" placeholder="Describe brevemente el evento..." />
@@ -181,7 +241,14 @@ export function RentalRequestWizard() {
                     <Field {...f('clientName')} label="Nombre completo" placeholder="Tu nombre completo" />
                   </div>
                   <div style={{ flex: '1 1 220px' }}>
-                    <Field {...f('clientId')} label="Documento de identidad" placeholder="1234567890" />
+                    <div>
+                      <label style={labelStyle}>Documento de identidad</label>
+                      <input name="clientId" type="text" inputMode="numeric" value={form.clientId} onChange={handleChange} placeholder="1234567890"
+                        style={inputStyle}
+                        onFocus={e => e.target.style.borderColor = C.primary}
+                        onBlur={e => e.target.style.borderColor = C.border}
+                      />
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
@@ -189,7 +256,14 @@ export function RentalRequestWizard() {
                     <Field {...f('clientEmail')} label="Correo electrónico" type="email" placeholder="tu@email.com" />
                   </div>
                   <div style={{ flex: '1 1 220px' }}>
-                    <Field {...f('clientPhone')} label="Teléfono" placeholder="315 123 4567" />
+                    <div>
+                      <label style={labelStyle}>Teléfono</label>
+                      <input name="clientPhone" type="tel" inputMode="tel" autoComplete="tel" value={form.clientPhone} onChange={handleChange} placeholder="315 123 4567"
+                        style={inputStyle}
+                        onFocus={e => e.target.style.borderColor = C.primary}
+                        onBlur={e => e.target.style.borderColor = C.border}
+                      />
+                    </div>
                   </div>
                 </div>
                 <Field {...f('organization')} label="Organización o entidad" placeholder="Nombre de la organización (opcional)" />
@@ -232,11 +306,13 @@ export function RentalRequestWizard() {
               : <div />
             }
             {step < 2
-              ? <button onClick={() => setStep(step + 1)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', background: C.primary, color: '#fff', fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: 'pointer', borderRadius: 2 }}>
+              ? <button onClick={handleNext} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', background: C.primary, color: '#fff', fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: 'pointer', borderRadius: 2 }}>
                   Siguiente <ArrowRight style={{ width: 13, height: 13 }} />
                 </button>
-              : <button onClick={handleSubmit} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', background: C.primary, color: '#fff', fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: 'pointer', borderRadius: 2 }}>
-                  <CheckCircle style={{ width: 13, height: 13 }} /> Enviar solicitud
+              : <button onClick={handleSubmit} disabled={submitting} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', background: submitting ? C.muted : C.primary, color: '#fff', fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: submitting ? 'default' : 'pointer', borderRadius: 2 }}>
+                  {submitting
+                    ? <><Loader2 style={{ width: 13, height: 13 }} className="animate-spin" /> Enviando...</>
+                    : <><CheckCircle style={{ width: 13, height: 13 }} /> Enviar solicitud</>}
                 </button>
             }
           </div>

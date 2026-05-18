@@ -9,12 +9,25 @@ export const PasswordRecovery = () => {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
+  const [error, setError] = useState('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setSent(true);
-    setLoading(false);
+    try {
+      await new Promise(r => setTimeout(r, 1500));
+      setSent(true);
+    } catch {
+      setError('No se pudo enviar el correo. Intenta nuevamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setSent(false);
+    setError('');
   };
 
   return (
@@ -53,13 +66,19 @@ export const PasswordRecovery = () => {
                   </div>
                 </div>
 
+                {error && (
+                  <div role="alert" style={{ marginBottom: 14, padding: '10px 12px', background: C.tint, borderLeft: `3px solid ${C.active}`, fontSize: '0.78rem', color: C.active }}>
+                    {error}
+                  </div>
+                )}
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: C.text, marginBottom: 5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    <label htmlFor="recovery-email" style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: C.text, marginBottom: 5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                       Correo Electrónico
                     </label>
-                    <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                      placeholder="tu@email.com" required
+                    <input id="recovery-email" name="email" type="email" autoComplete="email"
+                      value={email} onChange={e => { setEmail(e.target.value); if (error) setError(''); }}
+                      placeholder="tu@email.com" required disabled={loading}
                       style={{
                         width: '100%', padding: '9px 12px', fontSize: '0.82rem',
                         background: C.surfaceAlt, border: `1px solid ${C.border}`,
@@ -102,6 +121,10 @@ export const PasswordRecovery = () => {
                   Hemos enviado un enlace a <strong style={{ color: C.text }}>{email}</strong>. Revisa tu bandeja de entrada.
                 </p>
                 <p style={{ fontSize: '0.72rem', color: C.subtle }}>Si no recibes el correo, revisa tu carpeta de spam.</p>
+                <button type="button" onClick={handleReset}
+                  style={{ marginTop: 18, padding: '8px 16px', background: 'transparent', color: C.muted, fontWeight: 600, fontSize: '0.78rem', border: `1px solid ${C.border}`, cursor: 'pointer', borderRadius: 2 }}>
+                  Cambiar correo
+                </button>
               </motion.div>
             )}
 

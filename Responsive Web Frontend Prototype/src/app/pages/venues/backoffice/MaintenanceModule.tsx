@@ -4,7 +4,7 @@ import { Wrench, AlertTriangle, CheckCircle, Clock, Plus, X, Save, Search } from
 import { toast } from 'sonner';
 import { C } from '../../../theme';
 import { venuesService } from '../../../services/venuesService';
-import type { MaintenanceTicket } from '../../../data/venuesData';
+import type { MaintenanceTicket, Venue } from '../../../data/venuesData';
 
 const statusStyle: Record<string, { label: string; color: string; icon: any }> = {
   abierto:     { label: 'Abierto',     color: C.active,  icon: AlertTriangle },
@@ -30,6 +30,7 @@ const EMPTY_RESOLVE = { notes: '', cost: '' };
 
 export function MaintenanceModule() {
   const [tickets, setTickets]         = useState<MaintenanceTicket[]>([]);
+  const [venues, setVenues]           = useState<Venue[]>([]);
   const [loading, setLoading]         = useState(true);
   const [filter, setFilter]           = useState('all');
   const [search, setSearch]           = useState('');
@@ -41,9 +42,12 @@ export function MaintenanceModule() {
   const [saving, setSaving]           = useState(false);
 
   useEffect(() => {
-    venuesService.getMaintenanceTickets()
-      .then(setTickets)
-      .catch(() => toast.error('Error al cargar tickets'))
+    Promise.all([
+      venuesService.getMaintenanceTickets(),
+      venuesService.getVenues(),
+    ])
+      .then(([t, v]) => { setTickets(t); setVenues(v); })
+      .catch(() => toast.error('Error al cargar datos'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -58,11 +62,12 @@ export function MaintenanceModule() {
 
   const handleCreate = async () => {
     if (!form.title || !form.reportedBy) { toast.error('Título y reportado por son obligatorios'); return; }
+    if (!form.venueId) { toast.error('Selecciona un escenario'); return; }
     setSaving(true);
     try {
       const created = await venuesService.createTicket({
-        venueId:     form.venueId || 'manual',
-        venueName:   form.venueName || 'Sin especificar',
+        venueId:     form.venueId,
+        venueName:   form.venueName,
         type:        form.type,
         priority:    form.priority,
         title:       form.title,
@@ -308,10 +313,26 @@ export function MaintenanceModule() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>Escenario</label>
-                  <input value={form.venueName} onChange={e => setForm(p => ({ ...p, venueName: e.target.value }))}
-                    placeholder="Nombre del escenario" style={inputStyle}
-                    onFocus={e => e.target.style.borderColor = C.primary} onBlur={e => e.target.style.borderColor = C.border} />
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>Escenario *</label>
+                  {venues.length === 0 ? (
+                    <div style={{ padding: '9px 12px', background: C.surfaceAlt, border: `1px solid ${C.border}`, fontSize: '0.78rem', color: C.subtle, borderRadius: 2 }}>
+                      No hay escenarios registrados. Crea uno en "Gestión de Escenarios" primero.
+                    </div>
+                  ) : (
+                    <select
+                      value={form.venueId}
+                      onChange={e => {
+                        const v = venues.find(v => v.id === e.target.value);
+                        setForm(p => ({ ...p, venueId: e.target.value, venueName: v?.name ?? '' }));
+                      }}
+                      style={{ ...inputStyle, cursor: 'pointer' }}
+                    >
+                      <option value="">— Selecciona un escenario —</option>
+                      {venues.map(v => (
+                        <option key={v.id} value={v.id}>{v.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', gap: 12 }}>

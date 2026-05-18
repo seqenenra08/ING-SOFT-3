@@ -118,8 +118,14 @@ export const AdminNotifications = () => {
   };
 
   const deleteNotification = (id: string) => {
+    const target = notifications.find(n => n.id === id);
     setNotifications(prev => prev.filter(n => n.id !== id));
-    toast.success('Notificación eliminada');
+    toast.success('Notificación eliminada', {
+      action: target ? {
+        label: 'Deshacer',
+        onClick: () => setNotifications(prev => [target, ...prev]),
+      } : undefined,
+    });
   };
 
   const markRead = (id: string) => {
@@ -203,6 +209,7 @@ export const AdminNotifications = () => {
                     <p style={{ fontSize: '0.68rem', color: C.subtle }}>{n.date}</p>
                   </div>
                   <button onClick={ev => { ev.stopPropagation(); deleteNotification(n.id); }}
+                    aria-label={`Eliminar notificación: ${n.title}`} title="Eliminar"
                     style={{ background: 'transparent', border: 'none', color: C.subtle, cursor: 'pointer', padding: 4, borderRadius: 2, display: 'flex', alignItems: 'center' }}>
                     <Trash2 style={{ width: 14, height: 14 }} />
                   </button>

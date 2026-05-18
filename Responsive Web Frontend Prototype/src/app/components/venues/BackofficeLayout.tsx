@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import {
@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Folders, Receipt, Calendar, Wrench, Scale,
   BarChart3, Menu, X, ArrowLeft,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const C = {
   bg:     '#0c0202',
@@ -39,13 +40,34 @@ const dropdownStyle: React.CSSProperties = {
 export function BackofficeLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
     setUserMenuOpen(false);
+    logout();
     navigate('/escenarios');
   };
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setUserMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [userMenuOpen]);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f1ee' }}>
@@ -83,7 +105,7 @@ export function BackofficeLayout() {
               className="hidden lg:flex">
               {navItems.map(item => {
                 const Icon = item.icon;
-                const isActive = location.pathname === item.to;
+                const isActive = location.pathname === item.to || location.pathname.startsWith(item.to + '/');
                 return (
                   <Link key={item.to} to={item.to} style={{ height: '100%', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
                     <div
@@ -131,8 +153,9 @@ export function BackofficeLayout() {
               </span>
 
               {/* User menu */}
-              <div style={{ position: 'relative' }}>
+              <div ref={userMenuRef} style={{ position: 'relative' }}>
                 <button onClick={() => setUserMenuOpen(v => !v)}
+                  aria-haspopup="menu" aria-expanded={userMenuOpen} aria-label="Menú de usuario"
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', borderRadius: 4, background: 'transparent', border: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'rgba(139,26,26,0.2)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
@@ -167,6 +190,7 @@ export function BackofficeLayout() {
 
               {/* Mobile toggle */}
               <button onClick={() => setMobileOpen(v => !v)}
+                aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={mobileOpen}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
                 className="lg:hidden">
                 {mobileOpen
@@ -185,7 +209,7 @@ export function BackofficeLayout() {
               <div style={{ padding: '8px 16px 12px' }}>
                 {navItems.map(item => {
                   const Icon = item.icon;
-                  const isActive = location.pathname === item.to;
+                  const isActive = location.pathname === item.to || location.pathname.startsWith(item.to + '/');
                   return (
                     <Link key={item.to} to={item.to} onClick={() => setMobileOpen(false)} style={{ textDecoration: 'none' }}>
                       <div style={{

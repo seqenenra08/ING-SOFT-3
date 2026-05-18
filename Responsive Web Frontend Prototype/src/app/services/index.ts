@@ -17,3 +17,8 @@ export { venuesService } from './venuesService';
 
 export { educatorsService } from './educatorsService';
 export type { Educator } from './educatorsService';
+
+export { evaluationsService } from './evaluationsService';
+export type { Evaluation } from './evaluationsService';
+
+export { downloadCsv, toCsv } from './csvExport';

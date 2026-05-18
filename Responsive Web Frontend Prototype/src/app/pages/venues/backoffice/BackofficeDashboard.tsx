@@ -203,7 +203,7 @@ export function BackofficeDashboard() {
               { to: '/escenarios/backoffice/solicitudes', label: 'Solicitudes' },
               { to: '/escenarios/backoffice/contratos',   label: 'Contratos'   },
               { to: '/escenarios/backoffice/pagos',       label: 'Pagos'       },
-              { to: '/escenarios/backoffice/juridico',    label: 'Revisión Jurídica' },
+              { to: '/escenarios/backoffice/revision-juridica', label: 'Revisión Jurídica' },
               { to: '/escenarios/backoffice/mantenimiento',label: 'Mantenimiento' },
               { to: '/escenarios/backoffice/reportes',    label: 'Reportes'    },
             ].map((item, i, arr) => (

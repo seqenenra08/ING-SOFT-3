@@ -39,7 +39,7 @@ export const ProgramsCatalog = () => {
           <div style={{ position: 'relative', flex: '1 1 260px' }}>
             <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: C.subtle }} />
             <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar programas..."
+              type="search" aria-label="Buscar programas" placeholder="Buscar programas..."
               style={{ width: '100%', padding: '9px 12px 9px 36px', background: C.surface, border: `1px solid ${C.border}`, color: C.text, fontSize: '0.82rem', outline: 'none', borderRadius: 2, boxSizing: 'border-box' }}
               onFocus={e => e.target.style.borderColor = C.primary}
               onBlur={e => e.target.style.borderColor = C.border}
@@ -60,6 +60,18 @@ export const ProgramsCatalog = () => {
 
         {loading ? (
           <p style={{ fontSize: '0.82rem', color: C.muted }}>Cargando programas...</p>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center', background: C.surface, border: `1px solid ${C.border}` }}>
+            <Search style={{ width: 30, height: 30, color: C.border, margin: '0 auto 12px', opacity: 0.5 }} />
+            <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.95rem', color: C.text, marginBottom: 6 }}>Sin resultados</p>
+            <p style={{ fontSize: '0.78rem', color: C.muted }}>No se encontraron programas que coincidan con tu búsqueda.</p>
+            {(search || category !== 'Todos') && (
+              <button onClick={() => { setSearch(''); setCategory('Todos'); }}
+                style={{ marginTop: 14, padding: '7px 14px', background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, fontSize: '0.78rem', cursor: 'pointer', borderRadius: 2 }}>
+                Limpiar filtros
+              </button>
+            )}
+          </div>
         ) : (
           <>
             <p style={{ fontSize: '0.75rem', color: C.subtle, marginBottom: 16 }}>{filtered.length} programa(s) encontrado(s)</p>

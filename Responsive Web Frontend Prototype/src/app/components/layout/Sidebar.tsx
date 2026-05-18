@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, BookOpen, GraduationCap, Bell, User,
   Users, UserCog, Calendar, BarChart3, Settings,
-  FileText, AlertCircle, LogOut, ChevronRight
+  FileText, AlertCircle, LogOut, ChevronRight, Award
 } from 'lucide-react';
 
 const studentLinks = [
@@ -12,6 +12,7 @@ const studentLinks = [
   { to: '/estudiante/programas', icon: BookOpen,         label: 'Programas',       color: '#34d399' },
   { to: '/estudiante/mis-programas', icon: GraduationCap, label: 'Mis Programas', color: '#f472b6' },
   { to: '/estudiante/progreso',  icon: BarChart3,        label: 'Mi Progreso',     color: '#fbbf24' },
+  { to: '/estudiante/notas',     icon: Award,            label: 'Mis Notas',       color: '#fde68a' },
   { to: '/estudiante/notificaciones', icon: Bell,        label: 'Notificaciones',  color: '#f87171' },
   { to: '/estudiante/perfil',    icon: User,             label: 'Mi Perfil',       color: '#60a5fa' },
 ];

@@ -23,7 +23,7 @@ export const Profile = () => {
       const s = students.find(st => st.email === user.email);
       if (s) {
         setStudentId(s.id);
-        setForm({
+        const next = {
           nombre:            s.nombre            ?? '',
           apellido:          s.apellido          ?? '',
           email:             s.email             ?? '',
@@ -33,10 +33,14 @@ export const Profile = () => {
           documento:         s.documento         ?? '',
           acudiente:         s.acudiente         ?? '',
           telefonoAcudiente: s.telefonoAcudiente ?? '',
-        });
+        };
+        setForm(next);
+        setOriginalForm(next);
       }
     });
   }, [user]);
+
+  const [originalForm, setOriginalForm] = useState(form);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -44,8 +48,14 @@ export const Profile = () => {
   const handleSave = async () => {
     if (!studentId) return;
     await studentsService.update(studentId, form);
+    setOriginalForm(form);
     toast.success('Perfil actualizado correctamente');
     setEditing(false);
+  };
+
+  const handleCancel = () => {
+    if (editing) setForm(originalForm);
+    setEditing(!editing);
   };
 
   const inputStyle: React.CSSProperties = {
@@ -54,17 +64,25 @@ export const Profile = () => {
     border: editing ? `1px solid ${C.border}` : `1px solid transparent`,
     color: C.text, outline: 'none', borderRadius: 2, boxSizing: 'border-box',
     transition: 'all 0.15s',
+    cursor: editing ? 'text' : 'default',
   };
 
-  const Field = ({ id, label, icon: Icon }: { id: string; label: string; icon: any }) => (
+  const inputTypeFor = (id: string): string => {
+    if (id === 'email') return 'email';
+    if (id === 'telefono' || id === 'telefonoAcudiente') return 'tel';
+    if (id === 'fechaNacimiento') return 'date';
+    return 'text';
+  };
+
+  const renderField = (id: string, label: string, Icon: any) => (
     <div>
-      <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: C.subtle, marginBottom: 4, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+      <label htmlFor={`profile-${id}`} style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: C.subtle, marginBottom: 4, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
         {label}
       </label>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Icon style={{ width: 13, height: 13, color: C.subtle, flexShrink: 0 }} />
-        <input name={id} value={(form as any)[id]} onChange={handleChange}
-          readOnly={!editing} style={inputStyle}
+        <input id={`profile-${id}`} name={id} type={inputTypeFor(id)} value={(form as any)[id]} onChange={handleChange}
+          readOnly={!editing} aria-readonly={!editing} style={inputStyle}
           onFocus={e => { if (editing) e.target.style.borderColor = C.primary; }}
           onBlur={e => { if (editing) e.target.style.borderColor = C.border; }}
         />
@@ -82,7 +100,7 @@ export const Profile = () => {
             <p style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: C.active, marginBottom: 6 }}>Estudiante</p>
             <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: '1.6rem', fontWeight: 700, color: '#fff' }}>Mi Perfil</h1>
           </div>
-          <button onClick={() => setEditing(!editing)} style={{
+          <button onClick={handleCancel} style={{
             padding: '8px 20px', background: editing ? C.gold : C.primary,
             color: '#fff', fontWeight: 600, fontSize: '0.8rem', border: 'none', cursor: 'pointer', borderRadius: 2,
           }}>
@@ -144,7 +162,7 @@ export const Profile = () => {
             <div style={{ padding: '20px', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
               {section.fields.map(f => (
                 <div key={f.id} style={{ flex: '1 1 220px' }}>
-                  <Field id={f.id} label={f.label} icon={f.icon} />
+                  {renderField(f.id, f.label, f.icon)}
                 </div>
               ))}
             </div>

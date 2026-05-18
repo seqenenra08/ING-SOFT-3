@@ -20,9 +20,10 @@ export const Login = () => {
     setLoading(true);
     try {
       const role = await login(email, password);
-      if (role === 'estudiante')    navigate('/estudiante/dashboard');
-      else if (role === 'educador') navigate('/educador/dashboard');
-      else                          navigate('/admin/dashboard');
+      if (role === 'estudiante')         navigate('/estudiante/dashboard');
+      else if (role === 'educador')      navigate('/educador/dashboard');
+      else if (role === 'administrador') navigate('/admin/dashboard');
+      else                               setError('Tu cuenta no tiene un rol válido. Contacta al administrador.');
     } catch {
       setError('Credenciales incorrectas. Verifica tu usuario y contraseña.');
     } finally {
@@ -138,12 +139,14 @@ export const Login = () => {
           )}
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <fieldset disabled={loading} style={{ border: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: C.text, marginBottom: 6, letterSpacing: '0.02em' }}>
+              <label htmlFor="login-email" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: C.text, marginBottom: 6, letterSpacing: '0.02em' }}>
                 CORREO ELECTRÓNICO
               </label>
               <input
-                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                id="login-email" name="email" type="email" autoComplete="email"
+                value={email} onChange={e => { setEmail(e.target.value); if (error) setError(''); }}
                 placeholder="tu@email.com" required
                 style={inputStyle(false)}
                 onFocus={e => e.target.style.borderColor = C.primary}
@@ -152,23 +155,27 @@ export const Login = () => {
             </div>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: C.text, letterSpacing: '0.02em' }}>CONTRASEÑA</label>
+                <label htmlFor="login-password" style={{ fontSize: '0.75rem', fontWeight: 600, color: C.text, letterSpacing: '0.02em' }}>CONTRASEÑA</label>
                 <Link to="/recuperar-contrasena" style={{ fontSize: '0.72rem', color: C.active }}>¿Olvidaste?</Link>
               </div>
               <div style={{ position: 'relative' }}>
                 <input
-                  type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                  id="login-password" name="password" autoComplete="current-password"
+                  type={showPass ? 'text' : 'password'}
+                  value={password} onChange={e => { setPassword(e.target.value); if (error) setError(''); }}
                   placeholder="••••••••" required
                   style={{ ...inputStyle(false), paddingRight: 40 }}
                   onFocus={e => e.target.style.borderColor = C.primary}
                   onBlur={e => e.target.style.borderColor = C.border}
                 />
                 <button type="button" onClick={() => setShowPass(!showPass)}
+                  aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.subtle }}>
                   {showPass ? <EyeOff style={{ width: 15, height: 15 }} /> : <Eye style={{ width: 15, height: 15 }} />}
                 </button>
               </div>
             </div>
+            </fieldset>
             <button type="submit" disabled={loading} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               padding: '11px 0', background: loading ? C.muted : C.primary,

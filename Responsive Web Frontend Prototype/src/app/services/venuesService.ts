@@ -349,6 +349,40 @@ export const venuesService = {
     return api.patch<RentalRequest>(`/requests/${id}/reject`, { reason });
   },
 
+  /**
+   * Cambia el estado de una solicitud a cualquier valor del enum request_status.
+   * Si el nuevo estado es 'rechazada' o 'cancelada', se exige un motivo.
+   * Si se pasa a un estado no terminal, se borra el motivo de rechazo previo.
+   */
+  async updateRequestStatus(
+    id: string,
+    status: string,
+    options?: { reason?: string; notes?: string }
+  ): Promise<RentalRequest> {
+    if (isSupabaseConfigured()) {
+      const payload: Record<string, unknown> = {
+        status,
+        reviewed_at: new Date().toISOString(),
+      };
+      if (status === 'rechazada' || status === 'cancelada') {
+        payload.rejection_reason = options?.reason ?? null;
+      } else {
+        // Al reabrir/avanzar, limpiamos motivo de rechazo previo
+        payload.rejection_reason = null;
+      }
+      if (options?.notes !== undefined) payload.notes = options.notes;
+
+      const { data, error } = await supabase!
+        .from('rental_requests')
+        .update(payload)
+        .eq('id', id)
+        .select().single();
+      if (error) throw new Error(error.message);
+      return fromDbRequest(data);
+    }
+    return api.patch<RentalRequest>(`/requests/${id}/status`, { status, ...options });
+  },
+
   // ── Contracts ─────────────────────────────────────────────────────────────────
   async getContracts(): Promise<Contract[]> {
     if (isSupabaseConfigured()) {
@@ -423,6 +457,7 @@ export const venuesService = {
       if (payload.clientName     !== undefined) db.client_name     = payload.clientName;
       if (payload.clientDocument !== undefined) db.client_document = payload.clientDocument;
       if (payload.venueName      !== undefined) db.venue_name      = payload.venueName;
+      if ((payload as any).venueId !== undefined) db.venue_id      = (payload as any).venueId;
       if (payload.startDate      !== undefined) db.start_date      = payload.startDate;
       if (payload.endDate        !== undefined) db.end_date        = payload.endDate;
       if (payload.totalAmount    !== undefined) db.total_amount    = payload.totalAmount;

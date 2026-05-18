@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Download, BarChart3, Users, TrendingUp, BookOpen } from 'lucide-react';
+import { Download, BarChart3, Users, TrendingUp, BookOpen, ClipboardCheck } from 'lucide-react';
+import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { C } from '../../theme';
 import { studentsService } from '../../services/studentsService';
 import { programsService, Program } from '../../services/programsService';
 import { educatorsService, Educator } from '../../services/educatorsService';
+import { evaluationsService } from '../../services/evaluationsService';
+import { downloadCsv } from '../../services/csvExport';
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (active && payload?.length) {
@@ -23,6 +26,7 @@ const reports = [
   { name: 'Reporte de Inscripciones',  desc: 'Detalle de todos los estudiantes inscritos por programa', icon: Users },
   { name: 'Reporte de Programas',      desc: 'Estado y estadísticas de todos los programas del centro', icon: BookOpen },
   { name: 'Reporte de Educadores',     desc: 'Listado de educadores y sus programas asignados',         icon: BarChart3 },
+  { name: 'Reporte de Evaluaciones',   desc: 'Histórico completo de notas y observaciones (CSV)',       icon: ClipboardCheck },
   { name: 'Reporte General',           desc: 'Resumen ejecutivo del centro cultural',                   icon: TrendingUp },
 ];
 
@@ -47,7 +51,36 @@ export const Reports = () => {
     }).finally(() => setLoading(false));
   }, []);
 
-  function downloadReport(reportName: string) {
+  async function downloadReport(reportName: string) {
+    // Reporte de evaluaciones: CSV directo desde Supabase
+    if (reportName.includes('Evaluaciones')) {
+      try {
+        const evals = await evaluationsService.getAll();
+        if (evals.length === 0) {
+          toast.error('Aún no hay evaluaciones registradas en el sistema');
+          return;
+        }
+        const rows = evals.map(e => [
+          e.date,
+          e.studentName ?? '',
+          e.programName ?? '',
+          e.programCategory ?? '',
+          e.nota === null ? '' : e.nota,
+          e.observaciones ?? '',
+          e.educatorName ?? '',
+        ]);
+        downloadCsv(
+          `evaluaciones-${new Date().toISOString().slice(0, 10)}.csv`,
+          ['Fecha', 'Estudiante', 'Programa', 'Categoría', 'Nota', 'Observaciones', 'Educador'],
+          rows
+        );
+        toast.success(`Reporte de ${evals.length} evaluación(es) descargado`);
+      } catch (err: any) {
+        toast.error(err?.message ?? 'Error al generar el reporte');
+      }
+      return;
+    }
+
     let content = '';
     if (reportName.includes('Inscripciones')) {
       const rows = students.map((s: any) =>

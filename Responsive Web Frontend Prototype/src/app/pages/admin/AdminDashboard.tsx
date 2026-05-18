@@ -128,13 +128,13 @@ export const AdminDashboard = () => {
             </h1>
             <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)' }}>Centro Cultural Lucy Tejada</p>
           </div>
-          <button style={{
+          <Link to="/admin/reportes" style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '9px 20px', background: C.primary, color: '#fff',
-            fontWeight: 600, fontSize: '0.8rem', border: 'none', cursor: 'pointer', borderRadius: 2,
+            fontWeight: 600, fontSize: '0.8rem', border: 'none', cursor: 'pointer', borderRadius: 2, textDecoration: 'none',
           }}>
-            <Download style={{ width: 14, height: 14 }} /> Exportar Reporte
-          </button>
+            <Download style={{ width: 14, height: 14 }} /> Ver Reportes
+          </Link>
         </motion.div>
       </div>
 
@@ -166,8 +166,8 @@ export const AdminDashboard = () => {
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 32px', display: 'flex', gap: 20, flexDirection: 'column' }}>
 
         {/* Charts row */}
-        <div style={{ display: 'flex', gap: 20 }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 360px', minWidth: 0 }}>
             <SectionBlock title="INSCRIPCIONES POR CATEGORÍA" delay={0.25}>
               <ResponsiveContainer width="100%" height={240}>
                 <PieChart>
@@ -182,7 +182,7 @@ export const AdminDashboard = () => {
               </ResponsiveContainer>
             </SectionBlock>
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: '1 1 360px', minWidth: 0 }}>
             <SectionBlock title="INSCRIPCIONES MENSUALES" delay={0.3}>
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={monthlyEnrollment}>

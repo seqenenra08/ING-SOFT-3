@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Eye, CheckCircle, XCircle, Clock, FileText, X, Save } from 'lucide-react';
+import { Search, Eye, CheckCircle, XCircle, FileText, X, Save, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { C } from '../../../theme';
 import { venuesService } from '../../../services/venuesService';
@@ -21,14 +21,29 @@ const statusStyle: Record<string, { label: string; color: string }> = {
 
 const statuses = ['all', 'enviada', 'en_revision', 'aprobada', 'pagada', 'rechazada'];
 
+// Transiciones permitidas desde cada estado (siguiendo el enum request_status del schema).
+// Si un estado no aparece, se considera terminal (sin transiciones).
+const allowedTransitions: Record<string, string[]> = {
+  enviada:           ['en_revision', 'aprobada', 'rechazada', 'cancelada'],
+  en_revision:       ['aprobada', 'rechazada', 'enviada', 'cancelada'],
+  aprobada:          ['contrato_generado', 'cancelada', 'en_revision'],
+  contrato_generado: ['pagada', 'cancelada'],
+  pagada:            ['cancelada'],
+  rechazada:         ['en_revision'],
+  cancelada:         [],
+};
+
+const STATUSES_NEEDING_REASON = new Set(['rechazada', 'cancelada']);
+
 export function RequestsManagement() {
   const [requests, setRequests]       = useState<RentalRequest[]>([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selected, setSelected]       = useState<RentalRequest | null>(null);
-  const [rejectModal, setRejectModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
+  // pendingStatus: cuando una transición exige motivo, abrimos un modal mostrando ese estado
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [reasonInput, setReasonInput] = useState('');
   const [saving, setSaving]           = useState(false);
 
   useEffect(() => {
@@ -45,36 +60,36 @@ export function RequestsManagement() {
     return matchSearch && matchStatus;
   });
 
-  const handleApprove = async () => {
+  /**
+   * Aplica un cambio de estado. Si requiere motivo (rechazada/cancelada) y no
+   * tenemos uno todavía, abre el modal para pedirlo.
+   */
+  const applyStatusChange = async (nextStatus: string, reason?: string) => {
     if (!selected) return;
+    if (STATUSES_NEEDING_REASON.has(nextStatus) && !reason?.trim()) {
+      setPendingStatus(nextStatus);
+      setReasonInput('');
+      return;
+    }
     setSaving(true);
     try {
-      const updated = await venuesService.approveRequest(selected.id, 'Aprobado por el backoffice');
+      const updated = await venuesService.updateRequestStatus(selected.id, nextStatus, { reason });
       setRequests(prev => prev.map(r => r.id === selected.id ? updated : r));
-      toast.success('Solicitud aprobada exitosamente');
-      setSelected(null);
+      setSelected(updated);
+      toast.success(`Estado actualizado: ${statusStyle[nextStatus]?.label ?? nextStatus}`);
+      setPendingStatus(null);
+      setReasonInput('');
     } catch (e: any) {
-      toast.error(e.message ?? 'Error al aprobar');
+      toast.error(e.message ?? 'Error al actualizar el estado');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleReject = async () => {
-    if (!selected || !rejectReason.trim()) { toast.error('Ingresa el motivo de rechazo'); return; }
-    setSaving(true);
-    try {
-      const updated = await venuesService.rejectRequest(selected.id, rejectReason);
-      setRequests(prev => prev.map(r => r.id === selected.id ? updated : r));
-      toast.success('Solicitud rechazada');
-      setSelected(null);
-      setRejectModal(false);
-      setRejectReason('');
-    } catch (e: any) {
-      toast.error(e.message ?? 'Error al rechazar');
-    } finally {
-      setSaving(false);
-    }
+  const confirmPendingChange = () => {
+    if (!pendingStatus) return;
+    if (!reasonInput.trim()) { toast.error('Ingresa un motivo'); return; }
+    applyStatusChange(pendingStatus, reasonInput.trim());
   };
 
   return (
@@ -227,25 +242,54 @@ export function RequestsManagement() {
                     </div>
                   )}
 
-                  {(selected.status === 'enviada' || selected.status === 'en_revision') && (
-                    <div style={{ display: 'flex', gap: 8, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
-                      <button onClick={handleApprove} disabled={saving}
-                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 0', background: C.primary, color: '#fff', fontSize: '0.75rem', fontWeight: 600, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', borderRadius: 2, opacity: saving ? 0.7 : 1 }}>
-                        <CheckCircle style={{ width: 12, height: 12 }} /> Aprobar
-                      </button>
-                      <button onClick={() => setRejectModal(true)} disabled={saving}
-                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 0', background: 'transparent', color: C.active, fontSize: '0.75rem', fontWeight: 600, border: `1px solid ${C.active}55`, cursor: saving ? 'not-allowed' : 'pointer', borderRadius: 2 }}>
-                        <XCircle style={{ width: 12, height: 12 }} /> Rechazar
-                      </button>
-                    </div>
-                  )}
-
-                  {selected.status === 'aprobada' && (
-                    <div style={{ padding: '8px 12px', background: '#22c55e10', border: '1px solid #22c55e33', borderRadius: 2, textAlign: 'center' }}>
-                      <CheckCircle style={{ width: 16, height: 16, color: '#22c55e', margin: '0 auto 4px' }} />
-                      <p style={{ fontSize: '0.72rem', color: '#22c55e', fontWeight: 600 }}>Solicitud aprobada</p>
-                    </div>
-                  )}
+                  {/* Transiciones de estado: botones para cada destino permitido */}
+                  {(() => {
+                    const options = allowedTransitions[selected.status] ?? [];
+                    if (options.length === 0) {
+                      return (
+                        <div style={{ padding: '10px 12px', background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 2, textAlign: 'center' }}>
+                          <p style={{ fontSize: '0.72rem', color: C.muted }}>Estado final — no hay más cambios posibles.</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div style={{ paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+                        <p style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.subtle, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <RefreshCw style={{ width: 10, height: 10 }} /> Cambiar estado a
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {options.map(s => {
+                            const cfg = statusStyle[s] ?? { label: s, color: C.primary };
+                            const danger = STATUSES_NEEDING_REASON.has(s);
+                            const Icon = danger ? XCircle : CheckCircle;
+                            return (
+                              <button
+                                key={s}
+                                onClick={() => applyStatusChange(s)}
+                                disabled={saving}
+                                type="button"
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 8,
+                                  padding: '8px 12px',
+                                  background: danger ? 'transparent' : `${cfg.color}14`,
+                                  color: cfg.color,
+                                  border: `1px solid ${cfg.color}55`,
+                                  fontSize: '0.78rem', fontWeight: 600,
+                                  cursor: saving ? 'not-allowed' : 'pointer',
+                                  borderRadius: 2,
+                                  opacity: saving ? 0.6 : 1,
+                                  transition: 'background 0.15s',
+                                }}>
+                                <Icon style={{ width: 12, height: 12 }} />
+                                <span style={{ flex: 1, textAlign: 'left' }}>{cfg.label}</span>
+                                {danger && <span style={{ fontSize: '0.65rem', color: C.subtle, fontWeight: 400 }}>requiere motivo</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </motion.div>
             )}
@@ -253,43 +297,50 @@ export function RequestsManagement() {
         </div>
       </div>
 
-      {/* Modal: Motivo de Rechazo */}
+      {/* Modal: Motivo (rechazo o cancelación) */}
       <AnimatePresence>
-        {rejectModal && (
+        {pendingStatus && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-            onClick={() => setRejectModal(false)}>
+            onClick={() => !saving && setPendingStatus(null)}>
             <motion.div initial={{ scale: 0.95, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 16 }}
               style={{ background: C.surface, border: `1px solid ${C.border}`, width: '100%', maxWidth: 420 }}
-              onClick={e => e.stopPropagation()}>
+              onClick={e => e.stopPropagation()}
+              role="dialog" aria-modal="true" aria-label={`Confirmar cambio a ${statusStyle[pendingStatus]?.label ?? pendingStatus}`}>
               <div style={{ padding: '16px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 3, height: 14, background: C.active, borderRadius: 2 }} />
-                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.88rem', color: C.text }}>MOTIVO DE RECHAZO</span>
+                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.88rem', color: C.text }}>
+                    {pendingStatus === 'rechazada' ? 'MOTIVO DE RECHAZO' : 'MOTIVO DE CANCELACIÓN'}
+                  </span>
                 </div>
-                <button onClick={() => setRejectModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                <button onClick={() => !saving && setPendingStatus(null)} aria-label="Cerrar"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                   <X style={{ width: 16, height: 16, color: C.subtle }} />
                 </button>
               </div>
               <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: C.text, marginBottom: 5 }}>Motivo *</label>
-                  <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={4}
-                    placeholder="Explica por qué se rechaza la solicitud..."
+                  <textarea value={reasonInput} onChange={e => setReasonInput(e.target.value)} rows={4}
+                    autoFocus
+                    placeholder={pendingStatus === 'rechazada'
+                      ? 'Explica por qué se rechaza la solicitud...'
+                      : 'Explica por qué se cancela la solicitud...'}
                     style={{ width: '100%', padding: '9px 12px', background: C.surfaceAlt, border: `1px solid ${C.border}`, color: C.text, fontSize: '0.82rem', outline: 'none', borderRadius: 2, boxSizing: 'border-box', resize: 'vertical' }}
                     onFocus={e => e.target.style.borderColor = C.active}
                     onBlur={e => e.target.style.borderColor = C.border}
                   />
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button onClick={() => setRejectModal(false)}
-                    style={{ flex: 1, padding: '9px', background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, fontSize: '0.82rem', cursor: 'pointer', borderRadius: 2 }}>
+                  <button onClick={() => setPendingStatus(null)} disabled={saving}
+                    style={{ flex: 1, padding: '9px', background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, fontSize: '0.82rem', cursor: saving ? 'not-allowed' : 'pointer', borderRadius: 2 }}>
                     Cancelar
                   </button>
-                  <button onClick={handleReject} disabled={saving}
+                  <button onClick={confirmPendingChange} disabled={saving}
                     style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px', background: saving ? C.border : C.active, color: '#fff', fontWeight: 600, fontSize: '0.82rem', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', borderRadius: 2 }}>
                     <Save style={{ width: 14, height: 14 }} />
-                    {saving ? 'Enviando...' : 'Confirmar Rechazo'}
+                    {saving ? 'Guardando...' : 'Confirmar'}
                   </button>
                 </div>
               </div>

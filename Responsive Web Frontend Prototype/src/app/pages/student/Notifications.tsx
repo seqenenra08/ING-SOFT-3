@@ -95,9 +95,10 @@ export const Notifications = () => {
               <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '0.85rem', color: C.text }}>TODAS LAS NOTIFICACIONES</span>
             </div>
             {unread > 0 && (
-              <span onClick={markAllRead} style={{ fontSize: '0.7rem', color: C.active, cursor: 'pointer', fontWeight: 600 }}>
+              <button onClick={markAllRead} type="button"
+                style={{ fontSize: '0.7rem', color: C.active, cursor: 'pointer', fontWeight: 600, background: 'none', border: 'none', padding: 0 }}>
                 Marcar todas como leídas
-              </span>
+              </button>
             )}
           </div>
 
@@ -117,6 +118,10 @@ export const Notifications = () => {
               <div key={n.id}>
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.2 + i * 0.05 }}
                   onClick={() => setRead(prev => new Set([...prev, n.id]))}
+                  onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && !read) { e.preventDefault(); setRead(prev => new Set([...prev, n.id])); } }}
+                  role={!read ? 'button' : undefined}
+                  tabIndex={!read ? 0 : undefined}
+                  aria-label={!read ? `Marcar notificación como leída: ${n.title}` : undefined}
                   style={{
                     display: 'flex', gap: 14, padding: '16px 20px',
                     borderLeft: !read ? `3px solid ${Cfg.color}` : '3px solid transparent',

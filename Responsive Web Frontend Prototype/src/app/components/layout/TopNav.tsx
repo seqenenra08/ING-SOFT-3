@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, BookOpen, GraduationCap, Bell, User,
   Users, UserCog, Calendar, BarChart3, Settings,
-  FileText, AlertCircle, LogOut, ChevronDown, Menu, X
+  FileText, AlertCircle, ClipboardCheck, LogOut, ChevronDown, Menu, X,
+  Award,
 } from 'lucide-react';
 
 const C = {
@@ -23,16 +24,18 @@ const studentLinks = [
   { to: '/estudiante/programas',      icon: BookOpen,        label: 'Programas' },
   { to: '/estudiante/mis-programas',  icon: GraduationCap,   label: 'Mis Programas' },
   { to: '/estudiante/progreso',       icon: BarChart3,       label: 'Mi Progreso' },
+  { to: '/estudiante/notas',          icon: Award,           label: 'Mis Notas' },
   { to: '/estudiante/notificaciones', icon: Bell,            label: 'Notificaciones' },
   { to: '/estudiante/perfil',         icon: User,            label: 'Mi Perfil' },
 ];
 
 const educadorLinks = [
-  { to: '/educador/dashboard', icon: LayoutDashboard, label: 'Inicio' },
-  { to: '/educador/grupos',    icon: Users,           label: 'Mis Grupos' },
-  { to: '/educador/horario',   icon: Calendar,        label: 'Horario' },
-  { to: '/educador/alertas',   icon: AlertCircle,     label: 'Alertas' },
-  { to: '/educador/perfil',    icon: User,            label: 'Mi Perfil' },
+  { to: '/educador/dashboard',  icon: LayoutDashboard, label: 'Inicio' },
+  { to: '/educador/grupos',     icon: Users,           label: 'Mis Grupos' },
+  { to: '/educador/horario',    icon: Calendar,        label: 'Horario' },
+  { to: '/educador/evaluacion', icon: ClipboardCheck,  label: 'Evaluación' },
+  { to: '/educador/alertas',    icon: AlertCircle,     label: 'Alertas' },
+  { to: '/educador/perfil',     icon: User,            label: 'Mi Perfil' },
 ];
 
 const adminLinks = [
@@ -69,6 +72,7 @@ export const TopNav = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const links =
     user?.role === 'estudiante' ? studentLinks :
@@ -76,6 +80,41 @@ export const TopNav = () => {
     adminLinks;
 
   const rm = roleMeta[user?.role ?? 'estudiante'];
+
+  const profilePath =
+    user?.role === 'administrador' ? '/admin/perfil' :
+    user?.role === 'educador'      ? '/educador/perfil' :
+    user?.role === 'estudiante'    ? '/estudiante/perfil' :
+    '/';
+
+  const isLinkActive = (to: string) => {
+    if (location.pathname === to) return true;
+    if (to.endsWith('/dashboard')) return false;
+    return location.pathname.startsWith(to + '/');
+  };
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setUserMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [userMenuOpen]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+    setUserMenuOpen(false);
+  }, [location.pathname]);
 
   return (
     <>
@@ -117,7 +156,7 @@ export const TopNav = () => {
             <nav className="hidden lg:flex items-center h-full flex-1">
               {links.map((link) => {
                 const Icon = link.icon;
-                const isActive = location.pathname === link.to;
+                const isActive = isLinkActive(link.to);
                 return (
                   <Link key={link.to} to={link.to} style={{ height: '100%', display: 'flex', alignItems: 'center' }}>
                     <div
@@ -163,9 +202,10 @@ export const TopNav = () => {
               </span>
 
               {/* User menu */}
-              <div style={{ position: 'relative' }}>
+              <div ref={userMenuRef} style={{ position: 'relative' }}>
                 <button
                   onClick={() => setUserMenuOpen(v => !v)}
+                  aria-haspopup="menu" aria-expanded={userMenuOpen} aria-label="Menú de usuario"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '5px 8px', borderRadius: 4,
@@ -208,7 +248,7 @@ export const TopNav = () => {
                       </div>
                       <div style={{ padding: 4 }}>
                         <Link
-                          to={`/${user?.role === 'administrador' ? 'admin' : user?.role}/perfil`}
+                          to={profilePath}
                           onClick={() => setUserMenuOpen(false)}
                         >
                           <div
@@ -254,6 +294,7 @@ export const TopNav = () => {
               <button
                 className="lg:hidden"
                 onClick={() => setMobileOpen(v => !v)}
+                aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={mobileOpen}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
               >
                 {mobileOpen
@@ -278,7 +319,7 @@ export const TopNav = () => {
               <div style={{ padding: '8px 16px 12px' }}>
                 {links.map(link => {
                   const Icon = link.icon;
-                  const isActive = location.pathname === link.to;
+                  const isActive = isLinkActive(link.to);
                   return (
                     <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)}>
                       <div style={{

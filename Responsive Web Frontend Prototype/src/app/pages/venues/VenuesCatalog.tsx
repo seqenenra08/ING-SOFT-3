@@ -6,6 +6,13 @@ import { venuesService } from '../../services/venuesService';
 import { C } from '../../theme';
 
 const types = ['Todos', 'auditorio', 'teatro', 'sala', 'salon_cultural'];
+const typeLabels: Record<string, string> = {
+  Todos: 'Todos',
+  auditorio: 'Auditorio',
+  teatro: 'Teatro',
+  sala: 'Sala',
+  salon_cultural: 'Salón cultural',
+};
 
 export function VenuesCatalog() {
   const [venues, setVenues] = useState<any[]>([]);
@@ -38,7 +45,8 @@ export function VenuesCatalog() {
         <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ position: 'relative', flex: '1 1 280px', maxWidth: 380 }}>
             <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: C.subtle }} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar escenario..."
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              type="search" aria-label="Buscar escenario" placeholder="Buscar escenario..."
               style={{ width: '100%', padding: '9px 12px 9px 36px', background: C.surface, border: `1px solid ${C.border}`, color: C.text, fontSize: '0.82rem', outline: 'none', borderRadius: 2, boxSizing: 'border-box' }}
               onFocus={e => e.target.style.borderColor = C.primary}
               onBlur={e => e.target.style.borderColor = C.border}
@@ -50,7 +58,7 @@ export function VenuesCatalog() {
                 padding: '6px 14px', background: type === t ? C.primary : C.surface,
                 color: type === t ? '#fff' : C.muted, border: `1px solid ${type === t ? C.primary : C.border}`,
                 fontSize: '0.72rem', fontWeight: type === t ? 600 : 400, cursor: 'pointer', borderRadius: 2,
-              }}>{t}</button>
+              }}>{typeLabels[t] ?? t}</button>
             ))}
           </div>
         </div>
@@ -80,7 +88,7 @@ export function VenuesCatalog() {
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                         <div>
                           <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, color: C.text, fontSize: '0.9rem' }}>{v.name}</p>
-                          <p style={{ fontSize: '0.7rem', color: C.active, fontWeight: 600, marginTop: 2 }}>{v.type}</p>
+                          <p style={{ fontSize: '0.7rem', color: C.active, fontWeight: 600, marginTop: 2 }}>{typeLabels[v.type] ?? v.type}</p>
                         </div>
                         <span style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#4b7a30', border: `1px solid #4b7a3044`, padding: '2px 8px', borderRadius: 2 }}>Disponible</span>
                       </div>

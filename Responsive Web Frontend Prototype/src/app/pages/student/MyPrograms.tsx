@@ -50,8 +50,9 @@ export const MyPrograms = () => {
             <p style={{ fontSize: '0.75rem', color: C.subtle, marginBottom: 16 }}>{programs.length} programa(s) activo(s)</p>
             {programs.map((p, i, arr) => (
               <div key={p.id}>
+                <Link to={`/estudiante/programa/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: i * 0.1 }}
-                  style={{ display: 'flex', gap: 20, padding: '20px 0', transition: 'background 0.15s' }}
+                  style={{ display: 'flex', gap: 20, padding: '20px 0', transition: 'background 0.15s', cursor: 'pointer' }}
                   onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = C.tint}
                   onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'transparent'}
                 >
@@ -77,13 +78,12 @@ export const MyPrograms = () => {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <Link to={`/estudiante/programa/${p.id}`}>
-                      <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, fontSize: '0.75rem', cursor: 'pointer', borderRadius: 2 }}>
-                        Ver detalles <ArrowRight style={{ width: 12, height: 12 }} />
-                      </button>
-                    </Link>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', border: `1px solid ${C.border}`, color: C.muted, fontSize: '0.75rem', borderRadius: 2 }}>
+                      Ver detalles <ArrowRight style={{ width: 12, height: 12 }} />
+                    </div>
                   </div>
                 </motion.div>
+                </Link>
                 {i < arr.length - 1 && <div style={{ height: 1, background: C.border }} />}
               </div>
             ))}
